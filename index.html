@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elderly Case Manager - Excel Pro</title>
+    <title>Elderly Case Manager - Case ID Version</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -11,45 +11,45 @@
             --bg-gray: #f2f2f7; --card-bg: #ffffff; --text-main: #1c1c1e; --text-sec: #8e8e93;
         }
 
-        body { font-family: -apple-system, sans-serif; background-color: var(--bg-gray); margin: 0; padding-bottom: 50px; }
+        body { font-family: -apple-system, sans-serif; background-color: var(--bg-gray); margin: 0; padding-bottom: 50px; color: var(--text-main); }
         header { background: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 5px rgba(0,0,0,0.1); }
         
-        /* Excel 控制按鈕樣式 */
         .io-controls { background: #fff; padding: 10px 20px; display: flex; gap: 10px; border-bottom: 1px solid #e5e5ea; }
         .btn-io { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #ddd; background: #fff; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; }
-        .btn-io:hover { background: #f9f9f9; }
 
         .controls { background: white; padding: 10px 20px; }
         .search-input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #d1d1d6; box-sizing: border-box; }
         
-        .filter-scroll { display: flex; overflow-x: auto; gap: 8px; padding: 10px 20px; background: white; }
+        .filter-scroll { display: flex; overflow-x: auto; gap: 8px; padding: 10px 20px; background: white; scrollbar-width: none; }
         .filter-btn { white-space: nowrap; padding: 6px 14px; border-radius: 15px; background: #e5e5ea; border: none; font-size: 13px; cursor: pointer; }
         .filter-btn.active { background: var(--primary); color: white; }
 
         #case-list { padding: 16px; }
         .card { background: var(--card-bg); border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); cursor: pointer; }
-        .tag-row { display: flex; gap: 5px; margin-bottom: 8px; }
+        .case-number-tag { font-size: 11px; color: var(--primary); font-weight: bold; margin-bottom: 2px; text-transform: uppercase; }
+        .tag-row { display: flex; gap: 5px; margin-bottom: 8px; margin-top: 5px; }
         .tag { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; }
 
-        /* Modal 樣式保持與之前一致 */
         .modal-overlay { position: fixed; top:0; left:0; width: 100%; height:100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: flex-end; z-index: 1000; }
         .modal-content { background: white; width: 100%; max-width: 600px; height: 92%; border-top-left-radius: 20px; border-top-right-radius: 20px; padding: 20px; overflow-y: auto; box-sizing: border-box; }
         .form-group { margin-bottom: 15px; }
-        input, select, textarea { width: 100%; padding: 11px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; }
+        label { display: block; font-size: 13px; color: var(--text-sec); margin-bottom: 5px; }
+        input, select, textarea { width: 100%; padding: 11px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 15px; }
+        
         .option-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
         .opt-btn { padding: 10px; border-radius: 8px; border: 1px solid #ddd; background: #f2f2f7; cursor: pointer; text-align: center; font-size: 13px; }
-        .opt-btn.active { background: var(--primary); color: white; }
+        .opt-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
         .log-editor { background: #fdfdfd; padding: 15px; border-radius: 12px; border: 2px dashed #ddd; margin-bottom: 15px; }
-        .log-editor.editing { border-color: var(--warning); background: #fffef0; }
-        .log-item { background: #f8f9fa; padding: 12px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #ddd; cursor: pointer; }
-        .btn-save-case { background: var(--primary); color: white; border: none; width: 100%; padding: 16px; border-radius: 14px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .log-item { background: #f8f9fa; padding: 12px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #ddd; }
+        .btn-save-case { background: var(--primary); color: white; border: none; width: 100%; padding: 16px; border-radius: 14px; font-weight: bold; cursor: pointer; font-size: 16px; }
     </style>
 </head>
 <body>
 
 <header>
     <h1>Case Manager</h1>
-    <button style="background:none; border:none; color:var(--primary); font-size:30px;" onclick="openAddModal()">＋</button>
+    <button style="background:none; border:none; color:var(--primary); font-size:30px; cursor:pointer;" onclick="openAddModal()">＋</button>
 </header>
 
 <div class="io-controls">
@@ -59,7 +59,7 @@
 </div>
 
 <div class="controls">
-    <input type="text" class="search-input" id="search-box" placeholder="🔍 搜尋長者姓名..." oninput="renderCases()">
+    <input type="text" class="search-input" id="search-box" placeholder="🔍 搜尋編號或姓名..." oninput="renderCases()">
 </div>
 
 <div class="filter-scroll" id="filter-tabs"></div>
@@ -69,12 +69,25 @@
 <div class="modal-overlay" id="case-modal">
     <div class="modal-content">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h2 id="modal-header-title">個案資料</h2>
-            <button onclick="closeModal()" style="border:none; background:none; color:var(--primary);">關閉</button>
+            <h2 id="modal-header-title">個案詳情</h2>
+            <button onclick="closeModal()" style="border:none; background:none; color:var(--primary); font-size:16px;">關閉</button>
         </div>
-        <input type="hidden" id="edit-id">
-        <div class="form-group"><label>長者姓名</label><input type="text" id="f-name"></div>
-        <div class="form-group"><label>聯絡電話</label><input type="text" id="f-phone"></div>
+        
+        <input type="hidden" id="internal-id">
+
+        <div class="form-group">
+            <label>個案編號 (必填)</label>
+            <input type="text" id="f-case-no" placeholder="例如: CASE-2024-001">
+        </div>
+        <div class="form-group">
+            <label>長者姓名</label>
+            <input type="text" id="f-name" placeholder="輸入姓名">
+        </div>
+        <div class="form-group">
+            <label>聯絡電話</label>
+            <input type="text" id="f-phone">
+        </div>
+
         <div class="option-grid">
             <div class="opt-btn" id="p-Urgent" onclick="setPriority('Urgent')">🔴 緊急</div>
             <div class="opt-btn" id="p-Normal" onclick="setPriority('Normal')">🔵 非緊急</div>
@@ -83,23 +96,25 @@
             <div class="opt-btn" id="t-Counselling" onclick="setCaseType('Counselling')">🤝 輔導</div>
             <div class="opt-btn" id="t-Hidden" onclick="setCaseType('Hidden')">👤 隱蔽</div>
         </div>
-        <div class="log-editor" id="log-editor-box">
-            <input type="hidden" id="edit-log-index" value="-1">
+
+        <div class="log-editor">
+            <label>新增聯絡紀錄</label>
             <div class="option-grid">
-                <div class="opt-btn" id="lt-Phone" onclick="setLogContactType('Phone')">📞 電話</div>
-                <div class="opt-btn" id="lt-InPerson" onclick="setLogContactType('InPerson')">🫂 面見</div>
+                <div class="opt-btn" id="lt-Phone" onclick="setLogType('Phone')">📞 電話</div>
+                <div class="opt-btn" id="lt-InPerson" onclick="setLogType('InPerson')">🫂 面見</div>
             </div>
-            <textarea id="log-text" placeholder="輸入服務內容..." rows="3"></textarea>
-            <button onclick="saveLogEntry()" style="width:100%; margin-top:10px; background:var(--success); color:white; border:none; padding:10px; border-radius:8px;">儲存紀錄</button>
+            <textarea id="log-text" placeholder="紀錄內容..." rows="3"></textarea>
+            <button onclick="saveLogEntry()" style="width:100%; margin-top:10px; background:var(--success); color:white; border:none; padding:10px; border-radius:8px; cursor:pointer;">儲存日誌</button>
         </div>
+
         <div id="modal-log-list"></div>
-        <button class="btn-save-case" onclick="saveFullCase()">儲存個案</button>
+        <button class="btn-save-case" onclick="saveFullCase()">儲存所有資料</button>
     </div>
 </div>
 
 <script>
     let cases = JSON.parse(localStorage.getItem('elderly_cases_integrated')) || [];
-    let tempPriority = 'Normal', tempCaseType = 'Counselling', tempLogContactType = 'Phone', currentFilter = 'ALL';
+    let tempPriority = 'Normal', tempCaseType = 'Counselling', tempLogType = 'Phone', currentFilter = 'ALL';
 
     const PRIORITY = { Urgent: { label: '🔴 緊急', color: '#ff4d4d' }, Normal: { label: '🔵 非緊急', color: '#4da6ff' } };
     const TYPES = { Counselling: { label: '🤝 輔導', color: '#ff7f50' }, Hidden: { label: '👤 隱蔽', color: '#9932cc' } };
@@ -108,61 +123,7 @@
 
     function saveToLocal() { localStorage.setItem('elderly_cases_integrated', JSON.stringify(cases)); }
 
-    // --- Excel 功能 ---
-    function exportToExcel() {
-        if (cases.length === 0) return alert("沒有資料可以匯出");
-
-        const data = cases.map(c => ({
-            "姓名": c.name,
-            "電話": c.phone,
-            "優先級": c.priority === 'Urgent' ? '緊急' : '非緊急',
-            "類別": c.caseType === 'Counselling' ? '輔導' : '隱蔽',
-            "上次聯絡日期": c.lastContactDate,
-            "狀態": c.isClosed ? '已結案' : '活躍',
-            "所有服務日誌": c.contactLog.map(l => `[${l.timestamp.split('T')[0]}][${l.type === 'Phone' ? '電話' : '面見'}] ${l.note}`).join(' | ')
-        }));
-
-        const worksheet = XLSX.utils.json_to_sheet(data);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Cases");
-        XLSX.writeFile(workbook, `Elderly_Cases_${new Date().toLocaleDateString()}.xlsx`);
-    }
-
-    function importFromExcel(event) {
-        const file = event.target.files[0];
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const json = XLSX.utils.sheet_to_json(sheet);
-
-            if (confirm(`讀取到 ${json.length} 條個案，是否合併到現有資料？`)) {
-                json.forEach(row => {
-                    // 簡單解析邏輯：如果姓名已存在則跳過，或你可以自定義覆蓋邏輯
-                    if (!cases.find(c => c.name === row["姓名"])) {
-                        cases.push({
-                            id: Date.now().toString() + Math.random(),
-                            name: row["姓名"] || "未命名",
-                            phone: row["電話"] || "",
-                            priority: row["優先級"] === '緊急' ? 'Urgent' : 'Normal',
-                            caseType: row["類別"] === '輔導' ? 'Counselling' : 'Hidden',
-                            lastContactDate: row["上次聯絡日期"] || "",
-                            isClosed: row["狀態"] === '已結案',
-                            contactLog: [], // 匯入時日誌解析較複雜，預設為空，或可進一步解析日誌字串
-                            serviceNotes: ""
-                        });
-                    }
-                });
-                saveToLocal();
-                renderCases();
-                alert("匯入完成！");
-            }
-        };
-        reader.readAsArrayBuffer(file);
-    }
-
-    // --- 核心邏輯 (與前版相同) ---
+    // --- 核心渲染 ---
     function renderFilterTabs() {
         const tabs = ['ALL', 'Urgent', 'Normal', 'Counselling', 'Hidden'];
         document.getElementById('filter-tabs').innerHTML = tabs.map(t => 
@@ -173,76 +134,138 @@
     function renderCases() {
         const list = document.getElementById('case-list');
         const search = document.getElementById('search-box').value.toLowerCase();
+        
         let filtered = cases.filter(c => {
-            const matches = c.name.toLowerCase().includes(search);
-            if (currentFilter === 'ALL') return matches;
-            return matches && (c.priority === currentFilter || c.caseType === currentFilter);
+            const matchesSearch = c.name.toLowerCase().includes(search) || (c.caseNo && c.caseNo.toLowerCase().includes(search));
+            if (currentFilter === 'ALL') return matchesSearch;
+            return matchesSearch && (c.priority === currentFilter || c.caseType === currentFilter);
         });
+
         list.innerHTML = filtered.map(c => `
             <div class="card" onclick="openEditModal('${c.id}')">
+                <div class="case-number-tag">${c.caseNo || '無編號'}</div>
+                <div style="font-weight:bold; font-size:18px;">${c.name}</div>
                 <div class="tag-row">
                     <span class="tag" style="background:${PRIORITY[c.priority].color}22; color:${PRIORITY[c.priority].color}">${PRIORITY[c.priority].label}</span>
                 </div>
-                <div style="font-weight:bold; font-size:18px;">${c.name}</div>
-                <div style="font-size:13px; color:#666;">📅 上次聯絡: ${c.lastContactDate || '無'}</div>
+                <div style="font-size:12px; color:#888;">📅 上次聯絡: ${c.lastContactDate || '未有紀錄'}</div>
             </div>
         `).join('');
     }
 
-    // (其餘 Modal/Log 函數 openEditModal, saveLogEntry 等與前版邏輯一致，此處為簡潔略過，代碼中已包含完整邏輯所需變數)
-    // 註：為確保完整運作，以下補全關鍵 Modal 函數
-    function setPriority(p) { tempPriority = p; document.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('active')); document.getElementById('p-'+p).classList.add('active'); }
-    function setCaseType(t) { tempCaseType = t; document.getElementById('t-Counselling').classList.toggle('active', t==='Counselling'); document.getElementById('t-Hidden').classList.toggle('active', t==='Hidden'); }
-    function setLogContactType(lt) { tempLogContactType = lt; document.getElementById('lt-Phone').classList.toggle('active', lt==='Phone'); document.getElementById('lt-InPerson').classList.toggle('active', lt==='InPerson'); }
-    
+    // --- Modal 操作 ---
     function openAddModal() {
-        document.getElementById('edit-id').value = '';
+        document.getElementById('internal-id').value = '';
+        document.getElementById('f-case-no').value = '';
         document.getElementById('f-name').value = '';
+        document.getElementById('f-phone').value = '';
         document.getElementById('modal-log-list').innerHTML = '';
-        document.getElementById('case-modal').style.display = 'flex';
         setPriority('Normal'); setCaseType('Counselling');
+        document.getElementById('case-modal').style.display = 'flex';
     }
 
     function openEditModal(id) {
         const c = cases.find(x => x.id === id);
-        document.getElementById('edit-id').value = c.id;
+        document.getElementById('internal-id').value = c.id;
+        document.getElementById('f-case-no').value = c.caseNo || '';
         document.getElementById('f-name').value = c.name;
-        document.getElementById('f-phone').value = c.phone;
+        document.getElementById('f-phone').value = c.phone || '';
         setPriority(c.priority); setCaseType(c.caseType);
         renderLogs(c.contactLog);
         document.getElementById('case-modal').style.display = 'flex';
     }
 
-    function renderLogs(logs) {
-        document.getElementById('modal-log-list').innerHTML = logs.map((l, i) => `
-            <div class="log-item" onclick="editLog(${i})">
-                <small>${l.type} - ${l.timestamp.split('T')[0]}</small><div>${l.note}</div>
-            </div>`).reverse().join('');
+    function saveFullCase() {
+        const internalId = document.getElementById('internal-id').value;
+        const caseNo = document.getElementById('f-case-no').value.trim();
+        const name = document.getElementById('f-name').value.trim();
+
+        if(!caseNo || !name) return alert("請填寫個案編號及長者姓名");
+
+        const data = {
+            caseNo: caseNo,
+            name: name,
+            phone: document.getElementById('f-phone').value,
+            priority: tempPriority,
+            caseType: tempCaseType
+        };
+
+        if(internalId) {
+            const i = cases.findIndex(x => x.id === internalId);
+            cases[i] = { ...cases[i], ...data };
+        } else {
+            cases.push({ id: Date.now().toString(), ...data, contactLog: [], lastContactDate: '' });
+        }
+
+        saveToLocal(); renderCases(); closeModal();
     }
 
+    // --- 輔助功能 ---
+    function setPriority(p) { tempPriority = p; document.getElementById('p-Urgent').classList.toggle('active', p==='Urgent'); document.getElementById('p-Normal').classList.toggle('active', p==='Normal'); }
+    function setCaseType(t) { tempCaseType = t; document.getElementById('t-Counselling').classList.toggle('active', t==='Counselling'); document.getElementById('t-Hidden').classList.toggle('active', t==='Hidden'); }
+    function setLogType(lt) { tempLogType = lt; document.getElementById('lt-Phone').classList.toggle('active', lt==='Phone'); document.getElementById('lt-InPerson').classList.toggle('active', lt==='InPerson'); }
+    function closeModal() { document.getElementById('case-modal').style.display = 'none'; }
+
     function saveLogEntry() {
-        const id = document.getElementById('edit-id').value;
+        const id = document.getElementById('internal-id').value;
         if(!id) return alert("請先儲存個案基本資料");
         const note = document.getElementById('log-text').value;
+        if(!note) return;
         const cIdx = cases.findIndex(x => x.id === id);
-        cases[cIdx].contactLog.push({ timestamp: new Date().toISOString(), note, type: tempLogContactType });
+        cases[cIdx].contactLog.push({ timestamp: new Date().toISOString(), note, type: tempLogType });
         cases[cIdx].lastContactDate = new Date().toLocaleDateString();
         saveToLocal(); renderLogs(cases[cIdx].contactLog); renderCases(); document.getElementById('log-text').value = '';
     }
 
-    function saveFullCase() {
-        const id = document.getElementById('edit-id').value;
-        const name = document.getElementById('f-name').value;
-        if(!name) return;
-        if(id) {
-            const i = cases.findIndex(x => x.id === id);
-            cases[i].name = name; cases[i].priority = tempPriority; cases[i].caseType = tempCaseType;
-        } else {
-            cases.push({ id: Date.now().toString(), name, phone: document.getElementById('f-phone').value, priority: tempPriority, caseType: tempCaseType, contactLog: [], lastContactDate: '' });
-        }
-        saveToLocal(); renderCases(); closeModal();
+    function renderLogs(logs) {
+        document.getElementById('modal-log-list').innerHTML = logs.map(l => `
+            <div class="log-item">
+                <small>${l.type === 'Phone' ? '📞 電話' : '🫂 面見'} - ${l.timestamp.split('T')[0]}</small>
+                <div>${l.note}</div>
+            </div>`).reverse().join('');
     }
-    function closeModal() { document.getElementById('case-modal').style.display = 'none'; }
+
+    // --- Excel 匯入匯出 ---
+    function exportToExcel() {
+        const data = cases.map(c => ({
+            "個案編號": c.caseNo,
+            "姓名": c.name,
+            "電話": c.phone,
+            "優先級": c.priority,
+            "類別": c.caseType,
+            "上次聯絡日期": c.lastContactDate,
+            "日誌摘要": c.contactLog.map(l => l.note).join(' | ')
+        }));
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Cases");
+        XLSX.writeFile(wb, `Case_Backup_${new Date().toLocaleDateString()}.xlsx`);
+    }
+
+    function importFromExcel(event) {
+        const file = event.target.files[0];
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+            const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+            json.forEach(row => {
+                if (!cases.find(c => c.caseNo === row["個案編號"])) {
+                    cases.push({
+                        id: Date.now().toString() + Math.random(),
+                        caseNo: row["個案編號"] || "NEW",
+                        name: row["姓名"] || "未知",
+                        phone: row["電話"] || "",
+                        priority: row["優先級"] || "Normal",
+                        caseType: row["類別"] || "Counselling",
+                        contactLog: [],
+                        lastContactDate: row["上次聯絡日期"] || ""
+                    });
+                }
+            });
+            saveToLocal(); renderCases(); alert("匯入成功");
+        };
+        reader.readAsArrayBuffer(file);
+    }
 </script>
 </body>
 </html>
