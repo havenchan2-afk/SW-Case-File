@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elderly Case Manager - Professional</title>
+    <title>Elderly Case Manager - Fixed Import</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -45,11 +45,9 @@
         .btn-full { width: 100%; padding: 16px; border-radius: 14px; font-weight: bold; cursor: pointer; font-size: 16px; border: none; margin-bottom: 12px; }
         .btn-save { background: var(--primary); color: white; }
         .btn-close-case { background: var(--warning); color: white; }
-        .btn-delete { background: none; color: var(--danger); font-size: 14px; text-decoration: underline; margin-top: 10px; }
+        .btn-delete { background: none; color: var(--danger); font-size: 14px; text-decoration: underline; margin-top: 10px; cursor: pointer; }
 
-        /* 確認對話框 */
         .confirm-dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; width: 80%; max-width: 300px; padding: 20px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); z-index: 2000; display: none; text-align: center; }
-        .confirm-dialog h3 { margin-top: 0; }
         .confirm-btns { display: flex; gap: 10px; margin-top: 20px; }
         .confirm-btns button { flex: 1; padding: 10px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; }
     </style>
@@ -79,7 +77,6 @@
             <h2 id="modal-header-title">個案詳情</h2>
             <button onclick="closeModal()" style="border:none; background:none; color:var(--primary); font-size:16px; cursor:pointer;">關閉</button>
         </div>
-        
         <input type="hidden" id="internal-id">
 
         <div class="form-group">
@@ -92,7 +89,7 @@
 
         <div class="form-group">
             <label>個案編號 (必填)</label>
-            <input type="text" id="f-case-no" placeholder="Case Number">
+            <input type="text" id="f-case-no">
         </div>
         <div class="form-group">
             <label>長者姓名</label>
@@ -117,7 +114,7 @@
                 <div class="opt-btn" id="lt-Phone" onclick="setLogType('Phone')">📞 電話</div>
                 <div class="opt-btn" id="lt-InPerson" onclick="setLogType('InPerson')">🫂 面見</div>
             </div>
-            <textarea id="log-text" placeholder="輸入本次服務內容..." rows="3"></textarea>
+            <textarea id="log-text" placeholder="輸入內容..." rows="3"></textarea>
             <button onclick="saveLogEntry()" style="width:100%; margin-top:10px; background:var(--success); color:white; border:none; padding:12px; border-radius:10px; cursor:pointer; font-weight:bold;">新增紀錄</button>
         </div>
 
@@ -126,9 +123,7 @@
         <div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
             <button class="btn-full btn-save" onclick="saveFullCase()">儲存所有資料</button>
             <button class="btn-full btn-close-case" id="quick-close-btn" onclick="showConfirm('close')">結束個案</button>
-            <center>
-                <button class="btn-delete" id="del-btn" onclick="showConfirm('delete')">⚠️ 刪除此個案資料</button>
-            </center>
+            <center><button class="btn-delete" id="del-btn" onclick="showConfirm('delete')">⚠️ 刪除此個案資料</button></center>
         </div>
     </div>
 </div>
@@ -148,34 +143,133 @@
 
     window.onload = () => { renderCases(); };
 
-    function saveToLocal() { localStorage.setItem('elderly_cases_v3', JSON.stringify(cases)); }
+    function saveToLocal() { 
+        localStorage.setItem('elderly_cases_v3', JSON.stringify(cases)); 
+    }
 
     function renderCases() {
         const list = document.getElementById('case-list');
         const search = document.getElementById('search-box').value.toLowerCase();
-        
         let filtered = cases.filter(c => 
-            c.name.toLowerCase().includes(search) || (c.caseNo && c.caseNo.toLowerCase().includes(search))
+            (c.name || "").toLowerCase().includes(search) || (c.caseNo || "").toLowerCase().includes(search)
         ).sort((a,b) => (a.status === 'Closed' ? 1 : -1));
 
         list.innerHTML = filtered.map(c => `
             <div class="card ${c.status === 'Closed' ? 'closed' : ''}" onclick="openEditModal('${c.id}')">
-                <div class="case-number-tag">${c.caseNo}</div>
-                <div style="font-weight:bold; font-size:18px;">${c.name}</div>
-                <div class="status-badge">${c.status}</div>
+                <div class="case-number-tag">${c.caseNo || 'N/A'}</div>
+                <div style="font-weight:bold; font-size:18px;">${c.name || '未命名'}</div>
+                <div class="status-badge">${c.status || 'Active'}</div>
                 <div class="tag-row">
-                    <span class="tag" style="background:#007AFF22; color:#007AFF">${c.caseType === 'Counselling' ? '🤝 輔導' : '👤 隱蔽'}</span>
+                    <span class="tag" style="background:#007AFF22; color:#007AFF">${c.caseType === 'Hidden' ? '👤 隱蔽' : '🤝 輔導'}</span>
                 </div>
                 <div style="font-size:12px; color:#888;">📅 上次聯絡: ${c.lastContactDate || '---'}</div>
             </div>
         `).join('');
     }
 
-    // --- Modal 操作 ---
+    // --- Excel 匯入修復 ---
+    function importFromExcel(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(firstSheet);
+
+            if (json.length === 0) {
+                alert("Excel 檔案中沒有發現資料！");
+                return;
+            }
+
+            let importCount = 0;
+            json.forEach(row => {
+                // 寬鬆匹配欄位名稱
+                const cNo = row["個案編號"] || row["Case No"] || row["編號"] || "";
+                const cName = row["姓名"] || row["長者姓名"] || row["Name"] || "";
+                
+                if (cName || cNo) {
+                    // 檢查是否已存在 (以個案編號為準)
+                    const exists = cases.find(c => c.caseNo === String(cNo) && c.caseNo !== "");
+                    
+                    if (!exists) {
+                        const newCase = {
+                            id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+                            caseNo: String(cNo),
+                            name: String(cName),
+                            status: row["狀態"] === "Closed" || row["Status"] === "Closed" ? "Closed" : "Active",
+                            caseType: row["性質"] === "隱蔽" || row["Type"] === "Hidden" ? "Hidden" : "Counselling",
+                            lastContactDate: row["最後聯絡"] || row["Last Contact"] || "",
+                            contactLog: []
+                        };
+
+                        // 處理匯入日誌 (如果有)
+                        const rawLog = row["日誌摘要"] || row["Logs"] || "";
+                        if (rawLog) {
+                            newCase.contactLog.push({
+                                date: newCase.lastContactDate || new Date().toISOString().split('T')[0],
+                                note: String(rawLog),
+                                type: "Phone"
+                            });
+                        }
+                        
+                        cases.push(newCase);
+                        importCount++;
+                    }
+                }
+            });
+
+            saveToLocal();
+            renderCases();
+            alert(`匯入完成！成功新增 ${importCount} 條個案。`);
+            event.target.value = ""; // 清除 input 方便下次匯入
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function exportToExcel() {
+        if (cases.length === 0) return alert("目前沒有資料可以匯出");
+        const data = cases.map(c => ({
+            "個案編號": c.caseNo,
+            "姓名": c.name,
+            "狀態": c.status,
+            "性質": c.caseType === 'Hidden' ? '隱蔽' : '輔導',
+            "最後聯絡": c.lastContactDate,
+            "日誌摘要": c.contactLog.map(l => `[${l.date}] ${l.note}`).join(' | ')
+        }));
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Cases");
+        XLSX.writeFile(wb, `Elderly_Cases_${new Date().toISOString().split('T')[0]}.xlsx`);
+    }
+
+    // --- Modal & 邏輯 (保持與前版一致) ---
+    function setCaseStatus(s) {
+        tempStatus = s;
+        document.getElementById('st-Active').classList.toggle('active', s === 'Active');
+        document.getElementById('st-Closed').classList.toggle('active', s === 'Closed');
+    }
+    function setCaseType(t) {
+        tempCaseType = t;
+        document.getElementById('t-Counselling').classList.toggle('active', t === 'Counselling');
+        document.getElementById('t-Hidden').classList.toggle('active', t === 'Hidden');
+    }
+    function setLogType(lt) {
+        tempLogType = lt;
+        document.getElementById('lt-Phone').classList.toggle('active', lt === 'Phone');
+        document.getElementById('lt-InPerson').classList.toggle('active', lt === 'InPerson');
+    }
+
     function openAddModal() {
-        resetModalFields();
         document.getElementById('internal-id').value = '';
-        document.getElementById('modal-header-title').innerText = "新增個案";
+        document.getElementById('f-case-no').value = '';
+        document.getElementById('f-name').value = '';
+        document.getElementById('log-text').value = '';
+        document.getElementById('log-date').valueAsDate = new Date();
+        document.getElementById('modal-log-list').innerHTML = '';
+        setCaseStatus('Active'); setCaseType('Counselling');
         document.getElementById('del-btn').style.display = 'none';
         document.getElementById('quick-close-btn').style.display = 'none';
         document.getElementById('case-modal').style.display = 'flex';
@@ -183,10 +277,10 @@
 
     function openEditModal(id) {
         const c = cases.find(x => x.id === id);
-        resetModalFields();
         document.getElementById('internal-id').value = c.id;
-        document.getElementById('f-case-no').value = c.caseNo;
-        document.getElementById('f-name').value = c.name;
+        document.getElementById('f-case-no').value = c.caseNo || '';
+        document.getElementById('f-name').value = c.name || '';
+        document.getElementById('log-date').valueAsDate = new Date();
         setCaseStatus(c.status || 'Active');
         setCaseType(c.caseType || 'Counselling');
         renderLogs(c.contactLog);
@@ -195,48 +289,16 @@
         document.getElementById('case-modal').style.display = 'flex';
     }
 
-    function resetModalFields() {
-        document.getElementById('f-case-no').value = '';
-        document.getElementById('f-name').value = '';
-        document.getElementById('log-text').value = '';
-        document.getElementById('log-date').valueAsDate = new Date();
-        document.getElementById('modal-log-list').innerHTML = '';
-        setCaseStatus('Active');
-        setCaseType('Counselling');
-        setLogType('Phone');
-    }
-
-    // --- 狀態切換 ---
-    function setCaseStatus(s) {
-        tempStatus = s;
-        document.getElementById('st-Active').classList.toggle('active', s === 'Active');
-        document.getElementById('st-Closed').classList.toggle('active', s === 'Closed');
-    }
-
-    function setCaseType(t) {
-        tempCaseType = t;
-        document.getElementById('t-Counselling').classList.toggle('active', t === 'Counselling');
-        document.getElementById('t-Hidden').classList.toggle('active', t === 'Hidden');
-    }
-
-    function setLogType(lt) {
-        tempLogType = lt;
-        document.getElementById('lt-Phone').classList.toggle('active', lt === 'Phone');
-        document.getElementById('lt-InPerson').classList.toggle('active', lt === 'InPerson');
-    }
-
-    // --- 儲存邏輯 ---
     function saveLogEntry() {
         const id = document.getElementById('internal-id').value;
-        if(!id) return alert("請先填寫上方基本資料並儲存個案");
+        if(!id) return alert("請先儲存個案基本資料");
         const note = document.getElementById('log-text').value;
         const date = document.getElementById('log-date').value;
-        if(!note || !date) return alert("請輸入日期及內容");
-        
-        const cIdx = cases.findIndex(x => x.id === id);
-        cases[cIdx].contactLog.push({ date, note, type: tempLogType });
-        cases[cIdx].lastContactDate = date;
-        saveToLocal(); renderLogs(cases[cIdx].contactLog); renderCases(); 
+        if(!note || !date) return alert("請填寫日期與內容");
+        const idx = cases.findIndex(x => x.id === id);
+        cases[idx].contactLog.push({ date, note, type: tempLogType });
+        cases[idx].lastContactDate = date;
+        saveToLocal(); renderLogs(cases[idx].contactLog); renderCases();
         document.getElementById('log-text').value = '';
     }
 
@@ -249,16 +311,14 @@
     }
 
     function saveFullCase() {
-        const internalId = document.getElementById('internal-id').value;
+        const id = document.getElementById('internal-id').value;
         const caseNo = document.getElementById('f-case-no').value.trim();
         const name = document.getElementById('f-name').value.trim();
-
-        if(!caseNo || !name) return alert("請輸入個案編號及姓名");
+        if(!caseNo || !name) return alert("請輸入編號及姓名");
 
         const data = { caseNo, name, status: tempStatus, caseType: tempCaseType };
-
-        if(internalId) {
-            const i = cases.findIndex(x => x.id === internalId);
+        if(id) {
+            const i = cases.findIndex(x => x.id === id);
             cases[i] = { ...cases[i], ...data };
         } else {
             cases.push({ id: Date.now().toString(), ...data, contactLog: [], lastContactDate: '' });
@@ -266,45 +326,17 @@
         saveToLocal(); renderCases(); closeModal();
     }
 
-    // --- 二次確認功能 ---
     function showConfirm(mode) {
         const dialog = document.getElementById('confirm-dialog');
-        const title = document.getElementById('confirm-title');
-        const msg = document.getElementById('confirm-msg');
-        const yesBtn = document.getElementById('confirm-yes');
-        
         dialog.style.display = 'block';
-        if(mode === 'close') {
-            title.innerText = "結束個案";
-            msg.innerText = "確定要將此個案標記為已結束 (Closed) 嗎？";
-            yesBtn.onclick = () => { setCaseStatus('Closed'); saveFullCase(); hideConfirm(); };
-        } else if(mode === 'delete') {
-            title.innerText = "確定刪除？";
-            msg.innerText = "此操作無法撤銷，所有相關紀錄將被永久移除。";
-            yesBtn.onclick = () => { deleteCase(); hideConfirm(); };
-        }
+        document.getElementById('confirm-yes').onclick = () => {
+            if(mode === 'close') { setCaseStatus('Closed'); saveFullCase(); }
+            else { const id = document.getElementById('internal-id').value; cases = cases.filter(x => x.id !== id); saveToLocal(); renderCases(); closeModal(); }
+            hideConfirm();
+        };
     }
-
     function hideConfirm() { document.getElementById('confirm-dialog').style.display = 'none'; }
-
-    function deleteCase() {
-        const id = document.getElementById('internal-id').value;
-        cases = cases.filter(x => x.id !== id);
-        saveToLocal(); renderCases(); closeModal();
-    }
-
     function closeModal() { document.getElementById('case-modal').style.display = 'none'; }
-
-    // --- Excel (與前版一致，已包含個案編號) ---
-    function exportToExcel() {
-        const data = cases.map(c => ({
-            "個案編號": c.caseNo, "姓名": c.name, "狀態": c.status, "性質": c.caseType, "最後聯絡": c.lastContactDate
-        }));
-        const ws = XLSX.utils.json_to_sheet(data);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Cases");
-        XLSX.writeFile(wb, "Elderly_Cases_Backup.xlsx");
-    }
 </script>
 </body>
 </html>
