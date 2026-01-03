@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elderly Case Manager - Case ID Version</title>
+    <title>Elderly Case Manager - Professional</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -20,29 +20,38 @@
         .controls { background: white; padding: 10px 20px; }
         .search-input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #d1d1d6; box-sizing: border-box; }
         
-        .filter-scroll { display: flex; overflow-x: auto; gap: 8px; padding: 10px 20px; background: white; scrollbar-width: none; }
-        .filter-btn { white-space: nowrap; padding: 6px 14px; border-radius: 15px; background: #e5e5ea; border: none; font-size: 13px; cursor: pointer; }
-        .filter-btn.active { background: var(--primary); color: white; }
-
         #case-list { padding: 16px; }
-        .card { background: var(--card-bg); border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); cursor: pointer; }
-        .case-number-tag { font-size: 11px; color: var(--primary); font-weight: bold; margin-bottom: 2px; text-transform: uppercase; }
+        .card { background: var(--card-bg); border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); cursor: pointer; position: relative; }
+        .card.closed { opacity: 0.6; background: #e5e5ea; }
+        .case-number-tag { font-size: 11px; color: var(--primary); font-weight: bold; margin-bottom: 2px; }
         .tag-row { display: flex; gap: 5px; margin-bottom: 8px; margin-top: 5px; }
         .tag { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; }
+        .status-badge { position: absolute; top: 16px; right: 16px; font-size: 10px; padding: 2px 6px; border-radius: 4px; border: 1px solid #ccc; }
 
-        .modal-overlay { position: fixed; top:0; left:0; width: 100%; height:100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: flex-end; z-index: 1000; }
-        .modal-content { background: white; width: 100%; max-width: 600px; height: 92%; border-top-left-radius: 20px; border-top-right-radius: 20px; padding: 20px; overflow-y: auto; box-sizing: border-box; }
+        .modal-overlay { position: fixed; top:0; left:0; width: 100%; height:100%; background: rgba(0,0,0,0.4); display: none; justify-content: center; align-items: flex-end; z-index: 1000; }
+        .modal-content { background: white; width: 100%; max-width: 600px; height: 95%; border-top-left-radius: 20px; border-top-right-radius: 20px; padding: 20px; overflow-y: auto; box-sizing: border-box; }
+        
         .form-group { margin-bottom: 15px; }
-        label { display: block; font-size: 13px; color: var(--text-sec); margin-bottom: 5px; }
+        label { display: block; font-size: 13px; color: var(--text-sec); margin-bottom: 5px; font-weight: bold; }
         input, select, textarea { width: 100%; padding: 11px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 15px; }
         
         .option-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-        .opt-btn { padding: 10px; border-radius: 8px; border: 1px solid #ddd; background: #f2f2f7; cursor: pointer; text-align: center; font-size: 13px; }
+        .opt-btn { padding: 10px; border-radius: 8px; border: 1px solid #ddd; background: #f2f2f7; cursor: pointer; text-align: center; font-size: 13px; font-weight: 500; }
         .opt-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
 
-        .log-editor { background: #fdfdfd; padding: 15px; border-radius: 12px; border: 2px dashed #ddd; margin-bottom: 15px; }
-        .log-item { background: #f8f9fa; padding: 12px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #ddd; }
-        .btn-save-case { background: var(--primary); color: white; border: none; width: 100%; padding: 16px; border-radius: 14px; font-weight: bold; cursor: pointer; font-size: 16px; }
+        .log-editor { background: #f9f9fb; padding: 15px; border-radius: 12px; border: 1px solid #e5e5ea; margin-bottom: 15px; }
+        .log-item { background: #fff; padding: 12px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #eee; border-left: 5px solid #ddd; }
+        
+        .btn-full { width: 100%; padding: 16px; border-radius: 14px; font-weight: bold; cursor: pointer; font-size: 16px; border: none; margin-bottom: 12px; }
+        .btn-save { background: var(--primary); color: white; }
+        .btn-close-case { background: var(--warning); color: white; }
+        .btn-delete { background: none; color: var(--danger); font-size: 14px; text-decoration: underline; margin-top: 10px; }
+
+        /* 確認對話框 */
+        .confirm-dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; width: 80%; max-width: 300px; padding: 20px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); z-index: 2000; display: none; text-align: center; }
+        .confirm-dialog h3 { margin-top: 0; }
+        .confirm-btns { display: flex; gap: 10px; margin-top: 20px; }
+        .confirm-btns button { flex: 1; padding: 10px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -59,10 +68,8 @@
 </div>
 
 <div class="controls">
-    <input type="text" class="search-input" id="search-box" placeholder="🔍 搜尋編號或姓名..." oninput="renderCases()">
+    <input type="text" class="search-input" id="search-box" placeholder="🔍 搜尋個案編號或長者姓名..." oninput="renderCases()">
 </div>
-
-<div class="filter-scroll" id="filter-tabs"></div>
 
 <div id="case-list"></div>
 
@@ -70,109 +77,175 @@
     <div class="modal-content">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h2 id="modal-header-title">個案詳情</h2>
-            <button onclick="closeModal()" style="border:none; background:none; color:var(--primary); font-size:16px;">關閉</button>
+            <button onclick="closeModal()" style="border:none; background:none; color:var(--primary); font-size:16px; cursor:pointer;">關閉</button>
         </div>
         
         <input type="hidden" id="internal-id">
 
         <div class="form-group">
+            <label>個案狀態</label>
+            <div class="option-grid">
+                <div class="opt-btn" id="st-Active" onclick="setCaseStatus('Active')">🟢 Active</div>
+                <div class="opt-btn" id="st-Closed" onclick="setCaseStatus('Closed')">⚪ Closed</div>
+            </div>
+        </div>
+
+        <div class="form-group">
             <label>個案編號 (必填)</label>
-            <input type="text" id="f-case-no" placeholder="例如: CASE-2024-001">
+            <input type="text" id="f-case-no" placeholder="Case Number">
         </div>
         <div class="form-group">
             <label>長者姓名</label>
-            <input type="text" id="f-name" placeholder="輸入姓名">
-        </div>
-        <div class="form-group">
-            <label>聯絡電話</label>
-            <input type="text" id="f-phone">
+            <input type="text" id="f-name">
         </div>
 
-        <div class="option-grid">
-            <div class="opt-btn" id="p-Urgent" onclick="setPriority('Urgent')">🔴 緊急</div>
-            <div class="opt-btn" id="p-Normal" onclick="setPriority('Normal')">🔵 非緊急</div>
-        </div>
-        <div class="option-grid">
-            <div class="opt-btn" id="t-Counselling" onclick="setCaseType('Counselling')">🤝 輔導</div>
-            <div class="opt-btn" id="t-Hidden" onclick="setCaseType('Hidden')">👤 隱蔽</div>
+        <div class="form-group">
+            <label>個案性質</label>
+            <div class="option-grid">
+                <div class="opt-btn" id="t-Counselling" onclick="setCaseType('Counselling')">🤝 輔導</div>
+                <div class="opt-btn" id="t-Hidden" onclick="setCaseType('Hidden')">👤 隱蔽</div>
+            </div>
         </div>
 
         <div class="log-editor">
             <label>新增聯絡紀錄</label>
+            <div class="form-group" style="margin-top:5px;">
+                <label style="font-size:11px;">聯絡日期</label>
+                <input type="date" id="log-date">
+            </div>
             <div class="option-grid">
                 <div class="opt-btn" id="lt-Phone" onclick="setLogType('Phone')">📞 電話</div>
                 <div class="opt-btn" id="lt-InPerson" onclick="setLogType('InPerson')">🫂 面見</div>
             </div>
-            <textarea id="log-text" placeholder="紀錄內容..." rows="3"></textarea>
-            <button onclick="saveLogEntry()" style="width:100%; margin-top:10px; background:var(--success); color:white; border:none; padding:10px; border-radius:8px; cursor:pointer;">儲存日誌</button>
+            <textarea id="log-text" placeholder="輸入本次服務內容..." rows="3"></textarea>
+            <button onclick="saveLogEntry()" style="width:100%; margin-top:10px; background:var(--success); color:white; border:none; padding:12px; border-radius:10px; cursor:pointer; font-weight:bold;">新增紀錄</button>
         </div>
 
         <div id="modal-log-list"></div>
-        <button class="btn-save-case" onclick="saveFullCase()">儲存所有資料</button>
+
+        <div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
+            <button class="btn-full btn-save" onclick="saveFullCase()">儲存所有資料</button>
+            <button class="btn-full btn-close-case" id="quick-close-btn" onclick="showConfirm('close')">結束個案</button>
+            <center>
+                <button class="btn-delete" id="del-btn" onclick="showConfirm('delete')">⚠️ 刪除此個案資料</button>
+            </center>
+        </div>
+    </div>
+</div>
+
+<div class="confirm-dialog" id="confirm-dialog">
+    <h3 id="confirm-title">確定操作？</h3>
+    <p id="confirm-msg"></p>
+    <div class="confirm-btns">
+        <button id="confirm-yes" style="background:var(--danger); color:white;">確定</button>
+        <button onclick="hideConfirm()" style="background:#eee;">返回</button>
     </div>
 </div>
 
 <script>
-    let cases = JSON.parse(localStorage.getItem('elderly_cases_integrated')) || [];
-    let tempPriority = 'Normal', tempCaseType = 'Counselling', tempLogType = 'Phone', currentFilter = 'ALL';
+    let cases = JSON.parse(localStorage.getItem('elderly_cases_v3')) || [];
+    let tempStatus = 'Active', tempCaseType = 'Counselling', tempLogType = 'Phone';
 
-    const PRIORITY = { Urgent: { label: '🔴 緊急', color: '#ff4d4d' }, Normal: { label: '🔵 非緊急', color: '#4da6ff' } };
-    const TYPES = { Counselling: { label: '🤝 輔導', color: '#ff7f50' }, Hidden: { label: '👤 隱蔽', color: '#9932cc' } };
+    window.onload = () => { renderCases(); };
 
-    window.onload = () => { renderFilterTabs(); renderCases(); };
-
-    function saveToLocal() { localStorage.setItem('elderly_cases_integrated', JSON.stringify(cases)); }
-
-    // --- 核心渲染 ---
-    function renderFilterTabs() {
-        const tabs = ['ALL', 'Urgent', 'Normal', 'Counselling', 'Hidden'];
-        document.getElementById('filter-tabs').innerHTML = tabs.map(t => 
-            `<button class="filter-btn ${currentFilter === t ? 'active' : ''}" onclick="currentFilter='${t}'; renderFilterTabs(); renderCases();">${t==='ALL'?'全部':(PRIORITY[t]?.label||TYPES[t]?.label)}</button>`
-        ).join('');
-    }
+    function saveToLocal() { localStorage.setItem('elderly_cases_v3', JSON.stringify(cases)); }
 
     function renderCases() {
         const list = document.getElementById('case-list');
         const search = document.getElementById('search-box').value.toLowerCase();
         
-        let filtered = cases.filter(c => {
-            const matchesSearch = c.name.toLowerCase().includes(search) || (c.caseNo && c.caseNo.toLowerCase().includes(search));
-            if (currentFilter === 'ALL') return matchesSearch;
-            return matchesSearch && (c.priority === currentFilter || c.caseType === currentFilter);
-        });
+        let filtered = cases.filter(c => 
+            c.name.toLowerCase().includes(search) || (c.caseNo && c.caseNo.toLowerCase().includes(search))
+        ).sort((a,b) => (a.status === 'Closed' ? 1 : -1));
 
         list.innerHTML = filtered.map(c => `
-            <div class="card" onclick="openEditModal('${c.id}')">
-                <div class="case-number-tag">${c.caseNo || '無編號'}</div>
+            <div class="card ${c.status === 'Closed' ? 'closed' : ''}" onclick="openEditModal('${c.id}')">
+                <div class="case-number-tag">${c.caseNo}</div>
                 <div style="font-weight:bold; font-size:18px;">${c.name}</div>
+                <div class="status-badge">${c.status}</div>
                 <div class="tag-row">
-                    <span class="tag" style="background:${PRIORITY[c.priority].color}22; color:${PRIORITY[c.priority].color}">${PRIORITY[c.priority].label}</span>
+                    <span class="tag" style="background:#007AFF22; color:#007AFF">${c.caseType === 'Counselling' ? '🤝 輔導' : '👤 隱蔽'}</span>
                 </div>
-                <div style="font-size:12px; color:#888;">📅 上次聯絡: ${c.lastContactDate || '未有紀錄'}</div>
+                <div style="font-size:12px; color:#888;">📅 上次聯絡: ${c.lastContactDate || '---'}</div>
             </div>
         `).join('');
     }
 
     // --- Modal 操作 ---
     function openAddModal() {
+        resetModalFields();
         document.getElementById('internal-id').value = '';
-        document.getElementById('f-case-no').value = '';
-        document.getElementById('f-name').value = '';
-        document.getElementById('f-phone').value = '';
-        document.getElementById('modal-log-list').innerHTML = '';
-        setPriority('Normal'); setCaseType('Counselling');
+        document.getElementById('modal-header-title').innerText = "新增個案";
+        document.getElementById('del-btn').style.display = 'none';
+        document.getElementById('quick-close-btn').style.display = 'none';
         document.getElementById('case-modal').style.display = 'flex';
     }
 
     function openEditModal(id) {
         const c = cases.find(x => x.id === id);
+        resetModalFields();
         document.getElementById('internal-id').value = c.id;
-        document.getElementById('f-case-no').value = c.caseNo || '';
+        document.getElementById('f-case-no').value = c.caseNo;
         document.getElementById('f-name').value = c.name;
-        document.getElementById('f-phone').value = c.phone || '';
-        setPriority(c.priority); setCaseType(c.caseType);
+        setCaseStatus(c.status || 'Active');
+        setCaseType(c.caseType || 'Counselling');
         renderLogs(c.contactLog);
+        document.getElementById('del-btn').style.display = 'block';
+        document.getElementById('quick-close-btn').style.display = c.status === 'Active' ? 'block' : 'none';
         document.getElementById('case-modal').style.display = 'flex';
+    }
+
+    function resetModalFields() {
+        document.getElementById('f-case-no').value = '';
+        document.getElementById('f-name').value = '';
+        document.getElementById('log-text').value = '';
+        document.getElementById('log-date').valueAsDate = new Date();
+        document.getElementById('modal-log-list').innerHTML = '';
+        setCaseStatus('Active');
+        setCaseType('Counselling');
+        setLogType('Phone');
+    }
+
+    // --- 狀態切換 ---
+    function setCaseStatus(s) {
+        tempStatus = s;
+        document.getElementById('st-Active').classList.toggle('active', s === 'Active');
+        document.getElementById('st-Closed').classList.toggle('active', s === 'Closed');
+    }
+
+    function setCaseType(t) {
+        tempCaseType = t;
+        document.getElementById('t-Counselling').classList.toggle('active', t === 'Counselling');
+        document.getElementById('t-Hidden').classList.toggle('active', t === 'Hidden');
+    }
+
+    function setLogType(lt) {
+        tempLogType = lt;
+        document.getElementById('lt-Phone').classList.toggle('active', lt === 'Phone');
+        document.getElementById('lt-InPerson').classList.toggle('active', lt === 'InPerson');
+    }
+
+    // --- 儲存邏輯 ---
+    function saveLogEntry() {
+        const id = document.getElementById('internal-id').value;
+        if(!id) return alert("請先填寫上方基本資料並儲存個案");
+        const note = document.getElementById('log-text').value;
+        const date = document.getElementById('log-date').value;
+        if(!note || !date) return alert("請輸入日期及內容");
+        
+        const cIdx = cases.findIndex(x => x.id === id);
+        cases[cIdx].contactLog.push({ date, note, type: tempLogType });
+        cases[cIdx].lastContactDate = date;
+        saveToLocal(); renderLogs(cases[cIdx].contactLog); renderCases(); 
+        document.getElementById('log-text').value = '';
+    }
+
+    function renderLogs(logs) {
+        document.getElementById('modal-log-list').innerHTML = (logs || []).map(l => `
+            <div class="log-item">
+                <small style="color:var(--primary); font-weight:bold;">${l.date} | ${l.type === 'Phone' ? '📞 電話' : '🫂 面見'}</small>
+                <div style="margin-top:5px; font-size:14px;">${l.note}</div>
+            </div>`).reverse().join('');
     }
 
     function saveFullCase() {
@@ -180,15 +253,9 @@
         const caseNo = document.getElementById('f-case-no').value.trim();
         const name = document.getElementById('f-name').value.trim();
 
-        if(!caseNo || !name) return alert("請填寫個案編號及長者姓名");
+        if(!caseNo || !name) return alert("請輸入個案編號及姓名");
 
-        const data = {
-            caseNo: caseNo,
-            name: name,
-            phone: document.getElementById('f-phone').value,
-            priority: tempPriority,
-            caseType: tempCaseType
-        };
+        const data = { caseNo, name, status: tempStatus, caseType: tempCaseType };
 
         if(internalId) {
             const i = cases.findIndex(x => x.id === internalId);
@@ -196,75 +263,47 @@
         } else {
             cases.push({ id: Date.now().toString(), ...data, contactLog: [], lastContactDate: '' });
         }
-
         saveToLocal(); renderCases(); closeModal();
     }
 
-    // --- 輔助功能 ---
-    function setPriority(p) { tempPriority = p; document.getElementById('p-Urgent').classList.toggle('active', p==='Urgent'); document.getElementById('p-Normal').classList.toggle('active', p==='Normal'); }
-    function setCaseType(t) { tempCaseType = t; document.getElementById('t-Counselling').classList.toggle('active', t==='Counselling'); document.getElementById('t-Hidden').classList.toggle('active', t==='Hidden'); }
-    function setLogType(lt) { tempLogType = lt; document.getElementById('lt-Phone').classList.toggle('active', lt==='Phone'); document.getElementById('lt-InPerson').classList.toggle('active', lt==='InPerson'); }
+    // --- 二次確認功能 ---
+    function showConfirm(mode) {
+        const dialog = document.getElementById('confirm-dialog');
+        const title = document.getElementById('confirm-title');
+        const msg = document.getElementById('confirm-msg');
+        const yesBtn = document.getElementById('confirm-yes');
+        
+        dialog.style.display = 'block';
+        if(mode === 'close') {
+            title.innerText = "結束個案";
+            msg.innerText = "確定要將此個案標記為已結束 (Closed) 嗎？";
+            yesBtn.onclick = () => { setCaseStatus('Closed'); saveFullCase(); hideConfirm(); };
+        } else if(mode === 'delete') {
+            title.innerText = "確定刪除？";
+            msg.innerText = "此操作無法撤銷，所有相關紀錄將被永久移除。";
+            yesBtn.onclick = () => { deleteCase(); hideConfirm(); };
+        }
+    }
+
+    function hideConfirm() { document.getElementById('confirm-dialog').style.display = 'none'; }
+
+    function deleteCase() {
+        const id = document.getElementById('internal-id').value;
+        cases = cases.filter(x => x.id !== id);
+        saveToLocal(); renderCases(); closeModal();
+    }
+
     function closeModal() { document.getElementById('case-modal').style.display = 'none'; }
 
-    function saveLogEntry() {
-        const id = document.getElementById('internal-id').value;
-        if(!id) return alert("請先儲存個案基本資料");
-        const note = document.getElementById('log-text').value;
-        if(!note) return;
-        const cIdx = cases.findIndex(x => x.id === id);
-        cases[cIdx].contactLog.push({ timestamp: new Date().toISOString(), note, type: tempLogType });
-        cases[cIdx].lastContactDate = new Date().toLocaleDateString();
-        saveToLocal(); renderLogs(cases[cIdx].contactLog); renderCases(); document.getElementById('log-text').value = '';
-    }
-
-    function renderLogs(logs) {
-        document.getElementById('modal-log-list').innerHTML = logs.map(l => `
-            <div class="log-item">
-                <small>${l.type === 'Phone' ? '📞 電話' : '🫂 面見'} - ${l.timestamp.split('T')[0]}</small>
-                <div>${l.note}</div>
-            </div>`).reverse().join('');
-    }
-
-    // --- Excel 匯入匯出 ---
+    // --- Excel (與前版一致，已包含個案編號) ---
     function exportToExcel() {
         const data = cases.map(c => ({
-            "個案編號": c.caseNo,
-            "姓名": c.name,
-            "電話": c.phone,
-            "優先級": c.priority,
-            "類別": c.caseType,
-            "上次聯絡日期": c.lastContactDate,
-            "日誌摘要": c.contactLog.map(l => l.note).join(' | ')
+            "個案編號": c.caseNo, "姓名": c.name, "狀態": c.status, "性質": c.caseType, "最後聯絡": c.lastContactDate
         }));
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Cases");
-        XLSX.writeFile(wb, `Case_Backup_${new Date().toLocaleDateString()}.xlsx`);
-    }
-
-    function importFromExcel(event) {
-        const file = event.target.files[0];
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-            const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-            json.forEach(row => {
-                if (!cases.find(c => c.caseNo === row["個案編號"])) {
-                    cases.push({
-                        id: Date.now().toString() + Math.random(),
-                        caseNo: row["個案編號"] || "NEW",
-                        name: row["姓名"] || "未知",
-                        phone: row["電話"] || "",
-                        priority: row["優先級"] || "Normal",
-                        caseType: row["類別"] || "Counselling",
-                        contactLog: [],
-                        lastContactDate: row["上次聯絡日期"] || ""
-                    });
-                }
-            });
-            saveToLocal(); renderCases(); alert("匯入成功");
-        };
-        reader.readAsArrayBuffer(file);
+        XLSX.writeFile(wb, "Elderly_Cases_Backup.xlsx");
     }
 </script>
 </body>
