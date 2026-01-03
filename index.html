@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elderly Case Manager - Web</title>
+    <style>
+        :root {
+            --primary: #007AFF;
+            --success: #34c759;
+            --warning: #ff9500;
+            --danger: #ff3b30;
+            --bg-gray: #f2f2f7;
+            --card-bg: #ffffff;
+            --text-main: #1c1c1e;
+            --text-sec: #8e8e93;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-gray);
+            margin: 0;
+            color: var(--text-main);
+            padding-bottom: 50px;
+        }
+
+        /* Header */
+        header {
+            background: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+        }
+
+        header h1 { margin: 0; font-size: 24px; }
+        .header-btns button {
+            background: none; border: none; font-size: 24px; cursor: pointer; color: var(--primary);
+        }
+
+        .status-bar { padding: 5px 20px; font-size: 14px; color: var(--text-sec); background: white; }
+
+        /* Controls */
+        .controls { background: white; padding: 10px 20px; border-top: 1px solid #e5e5ea; }
+        .search-input {
+            width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #d1d1d6;
+            background: #f9f9f9; box-sizing: border-box; margin-bottom: 10px;
+        }
+
+        .filter-scroll { display: flex; overflow-x: auto; gap: 8px; padding-bottom: 10px; }
+        .filter-btn {
+            white-space: nowrap; padding: 6px 12px; border-radius: 15px;
+            background: #e5e5ea; border: none; font-size: 13px; cursor: pointer;
+        }
+        .filter-btn.active { background: var(--primary); color: white; }
+
+        .sort-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+        .sort-btn { padding: 4px 10px; border-radius: 15px; border: 1px solid var(--success); color: var(--success); background: none; cursor: pointer; }
+        .sort-btn.active { background: var(--success); color: white; }
+
+        /* Case Cards */
+        #case-list { padding: 16px; }
+        .card {
+            background: var(--card-bg); border-radius: 16px; padding: 16px; margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05); position: relative;
+        }
+        .card.pinned { border: 2px solid #ffcc00; background: #fffbe6; }
+        .card.closed { opacity: 0.6; background: #f0fff0; border: 1px solid var(--success); }
+
+        .card-top { display: flex; justify-content: space-between; margin-bottom: 10px; }
+        .tags { display: flex; flex-wrap: wrap; gap: 5px; }
+        .tag { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; }
+
+        .countdown-info { text-align: right; }
+        .countdown-label { font-weight: bold; font-size: 14px; }
+        .next-date { font-size: 11px; color: var(--text-sec); }
+
+        .title { font-size: 18px; font-weight: 600; margin: 8px 0; }
+        .preview { font-size: 13px; color: #666; margin: 4px 0; }
+
+        .goals { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+        .goal-tag { border: 1px solid #ddd; padding: 2px 6px; border-radius: 8px; font-size: 11px; }
+
+        /* Progress Bar */
+        .progress-container { margin-top: 12px; }
+        .progress-bar-bg { height: 6px; background: #e5e5ea; border-radius: 3px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; transition: width 0.3s; }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed; top:0; left:0; width: 100%; height:100%;
+            background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: flex-end; z-index: 1000;
+        }
+        .modal-content {
+            background: white; width: 100%; max-width: 600px; height: 85%;
+            border-top-left-radius: 20px; border-top-right-radius: 20px;
+            padding: 20px; overflow-y: auto; box-sizing: border-box;
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 14px; color: #666; margin-bottom: 5px; }
+        input, textarea, select {
+            width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box;
+        }
+        .btn-save {
+            background: var(--primary); color: white; border: none; width: 100%;
+            padding: 15px; border-radius: 12px; font-weight: bold; cursor: pointer; margin-top: 10px;
+        }
+        .btn-close { color: var(--primary); background: none; border: none; width: 100%; margin-top: 15px; cursor: pointer; }
+        .btn-archive { color: var(--danger); font-weight: bold; margin-top: 20px; background: none; border: none; width: 100%; cursor: pointer; }
+
+        /* Logs */
+        .log-section { background: #f9f9f9; padding: 10px; border-radius: 10px; margin-top: 15px; }
+        .log-item { border-bottom: 1px solid #eee; padding: 8px 0; }
+        .log-meta { font-size: 11px; color: var(--text-sec); }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Case Manager</h1>
+    <div class="header-btns">
+        <button onclick="toggleModal('stats-modal', true)">📊</button>
+        <button onclick="openAddModal()">＋</button>
+    </div>
+</header>
+<div class="status-bar" id="current-time">正在讀取時間...</div>
+
+<div class="controls">
+    <input type="text" class="search-input" id="search-box" placeholder="🔍 搜索長者姓名或服務摘要..." oninput="renderCases()">
+    <div class="filter-scroll" id="filter-container">
+        </div>
+    <div class="sort-row">
+        <span>排序:</span>
+        <button class="sort-btn active" id="sort-priority" onclick="setSort('PRIORITY')">緊急/置頂</button>
+        <button class="sort-btn" id="sort-date" onclick="setSort('DUE_DATE')">剩餘天數</button>
+    </div>
+</div>
+
+<div id="case-list">
+    </div>
+
+<div class="modal-overlay" id="case-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modal-title">個案詳情</h2>
+            <button onclick="toggleModal('case-modal', false)">關閉</button>
+        </div>
+        <div id="case-form">
+            <input type="hidden" id="edit-id">
+            <div class="form-group">
+                <label>長者姓名</label>
+                <input type="text" id="f-name">
+            </div>
+            <div class="form-group">
+                <label>電話</label>
+                <input type="text" id="f-phone">
+            </div>
+            <div class="form-group">
+                <label>上次聯絡日期 (YYYY/MM/DD)</label>
+                <input type="text" id="f-last-date" placeholder="2025/11/01">
+            </div>
+            <div class="form-group">
+                <label>優先級</label>
+                <select id="f-priority">
+                    <option value="Urgent">🔴 緊急</option>
+                    <option value="Normal">🔵 非緊急</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>個案性質</label>
+                <select id="f-type">
+                    <option value="Counselling">🤝 輔導</option>
+                    <option value="Hidden">👤 隱蔽</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>服務摘要</label>
+                <textarea id="f-notes" rows="3"></textarea>
+            </div>
+
+            <div class="log-section">
+                <h3>📖 聯絡日誌</h3>
+                <div id="log-list"></div>
+                <div style="display: flex; gap: 5px; margin-top: 10px;">
+                    <input type="text" id="new-log-text" placeholder="輸入紀錄...">
+                    <button onclick="addLogFromModal()" style="background: var(--success); color:white; border:none; border-radius:5px; padding:0 10px;">記錄</button>
+                </div>
+            </div>
+
+            <button class="btn-save" onclick="saveCase()">儲存變更</button>
+            <button class="btn-archive" id="archive-btn" onclick="handleArchive()">結案/重新開啟</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="stats-modal">
+    <div class="modal-content" style="height: 60%;">
+        <h2>📊 統計儀表板</h2>
+        <div id="stats-content"></div>
+        <button class="btn-close" onclick="toggleModal('stats-modal', false)">關閉</button>
+    </div>
+</div>
+
+<script>
+// --- Constants ---
+const PRIORITY_TYPES = {
+    Urgent: { label: '🔴 緊急', color: '#ff4d4d', rank: 1 },
+    Normal: { label: '🔵 非緊急', color: '#4da6ff', rank: 2 },
+};
+const CASE_TYPES = {
+    Counselling: { label: '🤝 輔導', color: '#ff7f50' },
+    Hidden: { label: '👤 隱蔽', color: '#9932cc' },
+};
+const CASE_GOALS = {
+    Health: { label: '🏥 醫療', color: '#3cb371' },
+    Mental: { label: '🧠 心理', color: '#9932cc' },
+};
+
+// --- State ---
+let cases = [];
+let currentFilter = 'ALL';
+let currentSort = 'PRIORITY';
+
+// --- Initialize ---
+window.onload = () => {
+    const saved = localStorage.getItem('elderly_cases');
+    if (saved) {
+        cases = JSON.parse(saved);
+    } else {
+        cases = [
+            { id: '1', name: '王小明', priority: 'Urgent', caseType: 'Counselling', serviceNotes: '需安排家訪', lastContactDate: '2025/11/01', countdownDays: 90, phone: '91234567', goals: ['Health'], isPinned: true, isClosed: false, contactLog: [] }
+        ];
+    }
+    updateTime();
+    setInterval(updateTime, 1000);
+    renderFilters();
+    renderCases();
+};
+
+function updateTime() {
+    const now = new Date();
+    document.getElementById('current-time').innerText = now.toLocaleString('zh-Hant', { dateStyle: 'full', timeStyle: 'short' });
+}
+
+// --- Logic ---
+function saveToLocal() {
+    localStorage.setItem('elderly_cases', JSON.stringify(cases));
+}
+
+function renderFilters() {
+    const container = document.getElementById('filter-container');
+    const types = ['ALL', 'Urgent', 'Normal', 'Counselling', 'Hidden', 'CLOSED'];
+    container.innerHTML = types.map(t => {
+        let label = t;
+        if(PRIORITY_TYPES[t]) label = PRIORITY_TYPES[t].label;
+        if(CASE_TYPES[t]) label = CASE_TYPES[t].label;
+        if(t === 'ALL') label = '全部活躍';
+        if(t === 'CLOSED') label = '🗑️ 已結案';
+        return `<button class="filter-btn ${currentFilter === t ? 'active' : ''}" onclick="setFilter('${t}')">${label}</button>`;
+    }).join('');
+}
+
+function setFilter(f) {
+    currentFilter = f;
+    renderFilters();
+    renderCases();
+}
+
+function setSort(s) {
+    currentSort = s;
+    document.getElementById('sort-priority').classList.toggle('active', s === 'PRIORITY');
+    document.getElementById('sort-date').classList.toggle('active', s === 'DUE_DATE');
+    renderCases();
+}
+
+function formatCountdown(lastContactStr, days) {
+    if (!lastContactStr) return null;
+    const lastDate = new Date(lastContactStr.replace(/\//g, '-'));
+    const targetDate = new Date(lastDate);
+    targetDate.setDate(lastDate.getDate() + days);
+    
+    const diff = targetDate - new Date();
+    const daysLeft = Math.ceil(diff / (1000 * 60 * 60 * 24));
+    
+    let color = '#34c759';
+    if (daysLeft <= 14) color = '#ff9500';
+    if (daysLeft <= 0) color = '#ff3b30';
+
+    return {
+        daysLeft,
+        color,
+        label: daysLeft <= 0 ? `⚠️ 超期 ${Math.abs(daysLeft)} 天` : `${daysLeft} 天剩餘`,
+        percent: Math.max(0, Math.min(100, (1 - (daysLeft / days)) * 100)),
+        targetStr: targetDate.toLocaleDateString()
+    };
+}
+
+function renderCases() {
+    const list = document.getElementById('case-list');
+    const searchTerm = document.getElementById('search-box').value.toLowerCase();
+
+    let filtered = cases.filter(c => {
+        const matchesSearch = c.name.toLowerCase().includes(searchTerm) || c.serviceNotes.toLowerCase().includes(searchTerm);
+        if (currentFilter === 'ALL') return !c.isClosed && matchesSearch;
+        if (currentFilter === 'CLOSED') return c.isClosed && matchesSearch;
+        return (c.priority === currentFilter || c.caseType === currentFilter) && !c.isClosed && matchesSearch;
+    });
+
+    // Sort
+    filtered.sort((a, b) => {
+        if (a.isPinned !== b.isPinned) return b.isPinned ? 1 : -1;
+        if (currentSort === 'PRIORITY') {
+            return (PRIORITY_TYPES[a.priority]?.rank || 99) - (PRIORITY_TYPES[b.priority]?.rank || 99);
+        } else {
+            const cdA = formatCountdown(a.lastContactDate, a.countdownDays)?.daysLeft || 999;
+            const cdB = formatCountdown(b.lastContactDate, b.countdownDays)?.daysLeft || 999;
+            return cdA - cdB;
+        }
+    });
+
+    list.innerHTML = filtered.map(c => {
+        const cd = formatCountdown(c.lastContactDate, c.countdownDays);
+        const pTheme = PRIORITY_TYPES[c.priority];
+        const tTheme = CASE_TYPES[c.caseType];
+
+        return `
+            <div class="card ${c.isPinned ? 'pinned' : ''} ${c.isClosed ? 'closed' : ''}" onclick="openEditModal('${c.id}')">
+                <div class="card-top">
+                    <div class="tags">
+                        ${c.isPinned ? '<span>📌</span>' : ''}
+                        <span class="tag" style="background:${pTheme.color}33; color:${pTheme.color}">${pTheme.label}</span>
+                        <span class="tag" style="background:${tTheme.color}33; color:${tTheme.color}">${tTheme.label}</span>
+                    </div>
+                    ${!c.isClosed && cd ? `
+                        <div class="countdown-info">
+                            <div class="countdown-label" style="color:${cd.color}">${cd.label}</div>
+                            <div class="next-date">下次聯絡: ${cd.targetStr}</div>
+                        </div>
+                    ` : ''}
+                </div>
+                <div class="title">${c.name}</div>
+                <div class="preview">📞 ${c.phone || '無'} | 📅 上次: ${c.lastContactDate}</div>
+                <div class="preview">${c.serviceNotes}</div>
+                ${!c.isClosed && cd ? `
+                    <div class="progress-container">
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" style="width:${cd.percent}%; background:${cd.color}"></div>
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+// --- Modal Actions ---
+function toggleModal(id, show) {
+    document.getElementById(id).style.display = show ? 'flex' : 'none';
+    if(id === 'stats-modal' && show) updateStats();
+}
+
+function openAddModal() {
+    document.getElementById('edit-id').value = '';
+    document.getElementById('modal-title').innerText = '新增個案';
+    document.getElementById('f-name').value = '';
+    document.getElementById('f-phone').value = '';
+    document.getElementById('f-last-date').value = new Date().toLocaleDateString();
+    document.getElementById('f-notes').value = '';
+    document.getElementById('log-list').innerHTML = '';
+    document.getElementById('archive-btn').style.display = 'none';
+    toggleModal('case-modal', true);
+}
+
+function openEditModal(id) {
+    const c = cases.find(x => x.id === id);
+    if(!c) return;
+
+    document.getElementById('edit-id').value = c.id;
+    document.getElementById('modal-title').innerText = '編輯個案: ' + c.name;
+    document.getElementById('f-name').value = c.name;
+    document.getElementById('f-phone').value = c.phone;
+    document.getElementById('f-last-date').value = c.lastContactDate;
+    document.getElementById('f-priority').value = c.priority;
+    document.getElementById('f-type').value = c.caseType;
+    document.getElementById('f-notes').value = c.serviceNotes;
+    
+    document.getElementById('archive-btn').style.display = 'block';
+    document.getElementById('archive-btn').innerText = c.isClosed ? '↩️ 重新開啟個案' : '🗑️ 結案 (Close Case)';
+
+    const logList = document.getElementById('log-list');
+    logList.innerHTML = (c.contactLog || []).map(l => `
+        <div class="log-item">
+            <div class="log-meta">${new Date(l.timestamp).toLocaleString()} (${l.type})</div>
+            <div>${l.note}</div>
+        </div>
+    `).reverse().join('');
+
+    toggleModal('case-modal', true);
+}
+
+function saveCase() {
+    const id = document.getElementById('edit-id').value;
+    const data = {
+        name: document.getElementById('f-name').value,
+        phone: document.getElementById('f-phone').value,
+        lastContactDate: document.getElementById('f-last-date').value,
+        priority: document.getElementById('f-priority').value,
+        caseType: document.getElementById('f-type').value,
+        serviceNotes: document.getElementById('f-notes').value,
+    };
+
+    if(!data.name) return alert('請輸入姓名');
+
+    if(id) {
+        // Edit
+        const idx = cases.findIndex(x => x.id === id);
+        cases[idx] = { ...cases[idx], ...data };
+    } else {
+        // Add
+        const newCase = {
+            id: Date.now().toString(),
+            ...data,
+            countdownDays: 90,
+            isPinned: false,
+            isClosed: false,
+            contactLog: []
+        };
+        cases.push(newCase);
+    }
+
+    saveToLocal();
+    renderCases();
+    toggleModal('case-modal', false);
+}
+
+function addLogFromModal() {
+    const id = document.getElementById('edit-id').value;
+    const text = document.getElementById('new-log-text').value;
+    if(!id || !text) return;
+
+    const idx = cases.findIndex(x => x.id === id);
+    const newLog = {
+        timestamp: new Date().toISOString(),
+        note: text,
+        type: 'Phone'
+    };
+    
+    cases[idx].contactLog.push(newLog);
+    cases[idx].lastContactDate = new Date().toLocaleDateString('zh-Hant');
+    
+    document.getElementById('new-log-text').value = '';
+    saveToLocal();
+    openEditModal(id); // 刷新
+    renderCases();
+}
+
+function handleArchive() {
+    const id = document.getElementById('edit-id').value;
+    const idx = cases.findIndex(x => x.id === id);
+    cases[idx].isClosed = !cases[idx].isClosed;
+    saveToLocal();
+    toggleModal('case-modal', false);
+    renderCases();
+}
+
+function updateStats() {
+    const active = cases.filter(c => !c.isClosed);
+    const closed = cases.filter(c => c.isClosed);
+    const urgent = active.filter(c => c.priority === 'Urgent').length;
+
+    document.getElementById('stats-content').innerHTML = `
+        <div style="display:flex; justify-content:space-around; text-align:center; margin: 20px 0;">
+            <div><div style="font-size:24px; font-weight:bold;">${active.length}</div>活躍中</div>
+            <div><div style="font-size:24px; font-weight:bold; color:var(--success);">${closed.length}</div>已結案</div>
+            <div><div style="font-size:24px; font-weight:bold; color:var(--danger);">${urgent}</div>緊急</div>
+        </div>
+        <p>總個案數: ${cases.length}</p>
+    `;
+}
+</script>
+
+</body>
+</html>
