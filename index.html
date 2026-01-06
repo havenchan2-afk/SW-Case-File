@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elderly Case Manager - Full System</title>
+    <title>Elderly Case Manager - One Row Per Case</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -21,7 +21,6 @@
         .controls { background: white; padding: 10px 20px 5px 20px; }
         .search-input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #d1d1d6; box-sizing: border-box; margin-bottom: 10px; }
         
-        /* 統計看板 */
         .stats-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
         .stats-box { background: #f8f9fa; border-radius: 12px; padding: 12px; text-align: center; border: 1px solid #e5e5ea; }
         .stats-val { display: block; font-size: 22px; font-weight: bold; color: var(--primary); }
@@ -66,7 +65,7 @@
 </header>
 
 <div class="io-controls">
-    <button class="btn-io" onclick="exportToExcel()">📤 全體匯出 (Excel)</button>
+    <button class="btn-io" onclick="exportToExcelOneRow()">📤 橫向匯出 (一案一行)</button>
     <button class="btn-io" onclick="document.getElementById('importFile').click()">📥 匯入資料 (Excel)</button>
     <input type="file" id="importFile" hidden accept=".xlsx" onchange="importFromExcel(event)">
 </div>
@@ -115,13 +114,13 @@
         </div></div>
 
         <div class="form-group"><label>導出報表</label>
-            <button class="btn-export-word" onclick="exportToWordSplitRows()">📝 匯出服務記錄表 (Word 跨行拆分)</button>
+            <button class="btn-export-word" onclick="exportToWordSplitRows()">📝 匯出服務記錄表 (Word 20字拆行)</button>
         </div>
 
         <div style="background:#eee; height:1px; margin:20px 0;"></div>
 
         <div class="form-group">
-            <label id="log-input-label">聯絡紀錄</label>
+            <label id="log-input-label">新增聯絡紀錄</label>
             <input type="date" id="log-date" style="margin-bottom:10px;">
             <div class="option-grid">
                 <div class="opt-btn" id="lt-Phone" onclick="setLogType('Phone')">TC (電話)</div>
@@ -135,69 +134,55 @@
 
         <div style="margin-top:30px;">
             <button class="btn-full" style="background:var(--primary); color:white;" onclick="saveFullCase()">儲存所有資料</button>
-            <button class="btn-full" style="background:var(--warning); color:white;" onclick="showConfirm('close')">結束個案</button>
-            <center><button style="background:none; border:none; color:var(--danger); text-decoration:underline;" onclick="showConfirm('delete')">刪除個案</button></center>
+            <button class="btn-full" style="background:var(--warning); color:white;" onclick="showConfirm('close')">結束個案 (Closed)</button>
+            <center><button style="background:none; border:none; color:var(--danger); text-decoration:underline; cursor:pointer;" onclick="showConfirm('delete')">刪除個案</button></center>
         </div>
     </div>
 </div>
 
 <script>
-    let cases = JSON.parse(localStorage.getItem('elderly_cases_v16')) || [];
+    let cases = JSON.parse(localStorage.getItem('elderly_cases_final_v1')) || [];
     let tempStatus = 'Active', tempType = 'Counselling', tempLogType = 'Phone', tempPriority = 'Normal', currentFilter = 'ALL';
 
     window.onload = () => { renderCases(); };
-    function saveToLocal() { localStorage.setItem('elderly_cases_v16', JSON.stringify(cases)); }
+    function saveToLocal() { localStorage.setItem('elderly_cases_final_v1', JSON.stringify(cases)); }
 
-    // --- Excel 匯出功能 (修正後) ---
-    function exportToExcel() {
+    // --- 核心修改：Excel 橫向匯出 (一案一行) ---
+    function exportToExcelOneRow() {
         if (cases.length === 0) return alert("沒有資料可以匯出");
-        let exportData = [];
-        cases.forEach(c => {
+
+        const exportData = cases.map(c => {
+            // 基礎資料
+            let row = {
+                "個案編號": c.caseNo,
+                "姓名": c.name,
+                "狀態": c.status,
+                "優先級": c.priority,
+                "個案性質": c.caseType,
+                "最後聯絡日期": c.lastContactDate || "無"
+            };
+
+            // 動態加入紀錄列：紀錄 1, 紀錄 2, ...
             if (c.contactLog && c.contactLog.length > 0) {
-                c.contactLog.forEach(l => {
-                    exportData.push({
-                        "個案編號": c.caseNo, "姓名": c.name, "狀態": c.status, "優先級": c.priority, "性質": c.caseType,
-                        "紀錄日期": l.date, "聯絡方式": l.type === 'Phone' ? 'TC' : 'OI', "紀錄內容": l.note
-                    });
+                // 按日期由舊到新排序紀錄匯出
+                const sortedLogs = [...c.contactLog].sort((a,b) => a.date.localeCompare(b.date));
+                sortedLogs.forEach((log, index) => {
+                    const typeStr = log.type === 'Phone' ? 'TC' : 'OI';
+                    row[`紀錄${index + 1}(${log.date})`] = `[${typeStr}] ${log.note}`;
                 });
             } else {
-                exportData.push({ "個案編號": c.caseNo, "姓名": c.name, "狀態": c.status, "優先級": c.priority, "性質": c.caseType, "紀錄日期": "無", "聯絡方式": "-", "紀錄內容": "無紀錄" });
+                row["紀錄1"] = "尚無紀錄";
             }
+            return row;
         });
+
         const ws = XLSX.utils.json_to_sheet(exportData);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Cases");
-        XLSX.writeFile(wb, "Elderly_Cases_Report.xlsx");
+        XLSX.utils.book_append_sheet(wb, ws, "個案總表");
+        XLSX.writeFile(wb, "個案管理總表_一案一行.xlsx");
     }
 
-    // --- Excel 匯入功能 ---
-    function importFromExcel(event) {
-        const file = event.target.files[0];
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-            json.forEach(row => {
-                const caseNo = String(row["個案編號"] || "").trim();
-                if (!caseNo) return;
-                let target = cases.find(c => c.caseNo === caseNo);
-                if (!target) {
-                    target = { id: Date.now().toString() + Math.random(), caseNo, name: row["姓名"], status: row["狀態"] || "Active", priority: row["優先級"] || "Normal", caseType: row["性質"] || "Counselling", contactLog: [], lastContactDate: "", isPinned: false };
-                    cases.push(target);
-                }
-                if (row["紀錄日期"] && row["紀錄日期"] !== "無") {
-                    const isDup = target.contactLog.some(l => l.date === String(row["紀錄日期"]) && l.note === String(row["紀錄內容"]));
-                    if (!isDup) target.contactLog.push({ date: String(row["紀錄日期"]), note: String(row["紀錄內容"]), type: (row["聯絡方式"] === 'OI') ? "InPerson" : "Phone" });
-                }
-                target.lastContactDate = target.contactLog.reduce((max, p) => p.date > max ? p.date : max, "");
-            });
-            saveToLocal(); renderCases(); alert("匯入成功"); event.target.value = "";
-        };
-        reader.readAsArrayBuffer(file);
-    }
-
-    // --- Word 匯出 (跨行拆分 20字) ---
+    // --- Word 匯出 (20字拆行) ---
     function exportToWordSplitRows() {
         const id = document.getElementById('internal-id').value;
         const c = cases.find(x => x.id === id);
@@ -212,12 +197,35 @@
                 tableRows += `<tr><td style="border:1px solid black;padding:5px;"></td><td style="border:1px solid black;padding:5px;"></td><td style="border:1px solid black;padding:5px;"></td><td style="border:1px solid black;padding:5px;">${chunks[j]}</td><td style="border:1px solid black;padding:5px;"></td></tr>`;
             }
         });
-        const html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'></head><body><h2 style="text-align:center;">保良局張惠萍皇后山喜悦薈服務記錄表</h2><p>個案姓名: ${c.name} &nbsp;&nbsp;&nbsp; 編號: ${c.caseNo}</p><table style="width:100%;border-collapse:collapse;border:1px solid black;"><tr style="background:#eee;font-weight:bold;text-align:center;"><td style="border:1px solid black;width:15%;">日期</td><td style="border:1px solid black;width:10%;">方式</td><td style="border:1px solid black;width:15%;">接觸人</td><td style="border:1px solid black;width:45%;">服務提供 (20字一行)</td><td style="border:1px solid black;width:15%;">備註</td></tr>${tableRows}</table></body></html>`;
+        const html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'></head><body><h2 style="text-align:center;">保良局張惠萍皇后山喜悦薈服務記錄表</h2><p>姓名: ${c.name} &nbsp;&nbsp;&nbsp; 編號: ${c.caseNo}</p><table style="width:100%;border-collapse:collapse;border:1px solid black;"><tr style="background:#eee;font-weight:bold;text-align:center;"><td style="border:1px solid black;width:15%;">日期</td><td style="border:1px solid black;width:10%;">方式</td><td style="border:1px solid black;width:15%;">接觸人</td><td style="border:1px solid black;width:45%;">服務提供 (20字一行)</td><td style="border:1px solid black;width:15%;">備註</td></tr>${tableRows}</table></body></html>`;
         const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
-        const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `${c.name}_紀錄表.doc`; link.click();
+        const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `${c.name}_服務紀錄.doc`; link.click();
     }
 
-    // --- 其他 UI 與核心功能 ---
+    // --- Excel 匯入 (兼容性修正) ---
+    function importFromExcel(event) {
+        const file = event.target.files[0];
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+            json.forEach(row => {
+                const caseNo = String(row["個案編號"] || "").trim();
+                if (!caseNo) return;
+                let target = cases.find(c => c.caseNo === caseNo);
+                if (!target) {
+                    target = { id: Date.now().toString() + Math.random(), caseNo, name: row["姓名"], status: row["狀態"] || "Active", priority: row["優先級"] || "Normal", caseType: row["個案性質"] || "Counselling", contactLog: [], lastContactDate: row["最後聯絡日期"] || "", isPinned: false };
+                    cases.push(target);
+                }
+                // 這裡匯入邏輯主要針對基本資料，詳細紀錄匯入通常需要特定格式，建議主要用於匯出備份
+            });
+            saveToLocal(); renderCases(); alert("匯入成功 (已更新/新增個案名單)"); event.target.value = "";
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    // --- 基礎渲染與邏輯 ---
     function updateStats() {
         const active = cases.filter(c => c.status === 'Active');
         document.getElementById('stat-counselling').innerText = active.filter(c => c.caseType === 'Counselling').length;
@@ -263,7 +271,7 @@
         const note = document.getElementById('log-text').value;
         const date = document.getElementById('log-date').value;
         const editIdx = parseInt(document.getElementById('editing-log-index').value);
-        if(!id || !note || !date) return alert("必填");
+        if(!id || !note || !date) return alert("請填寫日期與內容");
         const idx = cases.findIndex(x => x.id === id);
         if(editIdx > -1) cases[idx].contactLog[editIdx] = { date, note, type: tempLogType };
         else cases[idx].contactLog.push({ date, note, type: tempLogType });
@@ -285,7 +293,7 @@
         document.getElementById('log-date').value = l.date;
         document.getElementById('log-text').value = l.note;
         setLogType(l.type);
-        document.getElementById('log-input-label').innerText = "修改紀錄...";
+        document.getElementById('log-input-label').innerText = "修改紀錄模式";
         document.getElementById('cancel-edit-log-btn').style.display = "block";
     }
 
@@ -293,7 +301,7 @@
         document.getElementById('editing-log-index').value = "-1";
         document.getElementById('log-text').value = "";
         document.getElementById('log-date').valueAsDate = new Date();
-        document.getElementById('log-input-label').innerText = "聯絡紀錄";
+        document.getElementById('log-input-label').innerText = "新增聯絡紀錄";
         document.getElementById('cancel-edit-log-btn').style.display = "none";
     }
 
@@ -306,7 +314,7 @@
     function closeModal(){ document.getElementById('case-modal').style.display='none'; }
     function togglePin(e,id){ e.stopPropagation(); const i=cases.findIndex(x=>x.id===id); cases[i].isPinned=!cases[i].isPinned; saveToLocal(); renderCases(); }
     function setFilter(f,b){ currentFilter=f; document.querySelectorAll('.filter-tag').forEach(x=>x.classList.remove('active')); b.classList.add('active'); renderCases(); }
-    function showConfirm(a){ if(confirm("確定？")){ const i=cases.findIndex(x=>x.id===document.getElementById('internal-id').value); if(a==='close') cases[i].status='Closed'; else if(a==='delete') cases.splice(i,1); saveToLocal(); renderCases(); closeModal(); }}
+    function showConfirm(a){ if(confirm("確定執行操作？")){ const i=cases.findIndex(x=>x.id===document.getElementById('internal-id').value); if(a==='close') cases[i].status='Closed'; else if(a==='delete') cases.splice(i,1); saveToLocal(); renderCases(); closeModal(); }}
 </script>
 </body>
 </html>
