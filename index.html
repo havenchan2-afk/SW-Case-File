@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elderly Case Manager - Editable & Import Logs</title>
+    <title>Elderly Case Manager - Ultimate Integrated Version</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -21,6 +21,12 @@
         .controls { background: white; padding: 10px 20px 5px 20px; }
         .search-input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #d1d1d6; box-sizing: border-box; margin-bottom: 10px; }
         
+        /* 統計看板 */
+        .stats-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .stats-box { background: #f8f9fa; border-radius: 12px; padding: 12px; text-align: center; border: 1px solid #e5e5ea; }
+        .stats-val { display: block; font-size: 22px; font-weight: bold; color: var(--primary); }
+        .stats-label { font-size: 11px; color: var(--text-sec); font-weight: bold; }
+
         .filter-bar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: none; }
         .filter-tag { padding: 6px 14px; border-radius: 15px; background: #eee; font-size: 13px; cursor: pointer; border: none; white-space: nowrap; transition: 0.2s; }
         .filter-tag.active { background: var(--primary); color: white; }
@@ -33,15 +39,13 @@
         
         .card-content { flex: 1; }
         .card-right { display: flex; align-items: center; gap: 10px; }
-
         .countdown-box { text-align: center; min-width: 50px; }
-        .countdown-num { font-size: 18px; font-weight: bold; color: var(--text-main); display: block; }
+        .countdown-num { font-size: 18px; font-weight: bold; }
         .countdown-label { font-size: 9px; color: var(--text-sec); text-transform: uppercase; }
         .countdown-alert .countdown-num { color: var(--danger); }
 
-        .pin-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #ccc; padding: 5px; }
+        .pin-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #ccc; }
         .pin-btn.active { color: #ffcc00; }
-
         .case-number-tag { font-size: 11px; color: var(--primary); font-weight: bold; margin-bottom: 2px; }
         .tag-row { display: flex; gap: 5px; margin: 5px 0; }
         .tag { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; }
@@ -58,12 +62,11 @@
         .opt-btn.active { background: var(--primary); color: white; }
         .btn-full { width: 100%; padding: 16px; border-radius: 14px; font-weight: bold; cursor: pointer; border: none; margin-bottom: 12px; }
         
-        /* 紀錄項目樣式 */
         .log-item { background: #f9f9fb; padding: 12px; border-radius: 10px; margin-bottom: 10px; border-left: 4px solid #ddd; position: relative; }
         .log-edit-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--primary); cursor: pointer; font-size: 14px; }
         .log-date-badge { font-size: 11px; color: var(--text-sec); display: block; margin-bottom: 4px; }
         
-        .btn-export-single { background: #e1f5fe; color: #0288d1; border: 1px solid #b3e5fc; padding: 10px; border-radius: 8px; width: 100%; margin-bottom: 15px; cursor: pointer; font-weight: bold; font-size: 14px; }
+        .btn-export-word { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; padding: 12px; border-radius: 8px; width: 100%; margin-bottom: 15px; cursor: pointer; font-weight: bold; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -74,13 +77,25 @@
 </header>
 
 <div class="io-controls">
-    <button class="btn-io" onclick="exportToExcel()">📤 全體匯出 (含日誌)</button>
+    <button class="btn-io" onclick="exportToExcel()">📤 全體匯出 (Excel)</button>
     <button class="btn-io" onclick="document.getElementById('importFile').click()">📥 匯入資料 (含紀錄)</button>
     <input type="file" id="importFile" hidden accept=".xlsx" onchange="importFromExcel(event)">
 </div>
 
 <div class="controls">
     <input type="text" class="search-input" id="search-box" placeholder="🔍 搜尋編號、姓名..." oninput="renderCases()">
+    
+    <div class="stats-container">
+        <div class="stats-box">
+            <span class="stats-val" id="stat-counselling">0</span>
+            <span class="stats-label">ACTIVE 輔導個案</span>
+        </div>
+        <div class="stats-box">
+            <span class="stats-val" id="stat-hidden">0</span>
+            <span class="stats-label">ACTIVE 隱蔽個案</span>
+        </div>
+    </div>
+
     <div class="filter-bar">
         <button class="filter-tag active" onclick="setFilter('ALL', this)">全部</button>
         <button class="filter-tag" onclick="setFilter('Counselling', this)">🤝 輔導</button>
@@ -95,9 +110,10 @@
 <div class="modal-overlay" id="case-modal">
     <div class="modal-content">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
-            <h2 id="modal-header-title" style="margin:0;">個案詳情</h2>
+            <h2 style="margin:0;">個案詳情</h2>
             <button onclick="closeModal()" style="border:none; background:none; color:var(--primary); font-weight:bold;">關閉</button>
         </div>
+        
         <input type="hidden" id="internal-id">
         <input type="hidden" id="editing-log-index" value="-1">
         
@@ -128,40 +144,47 @@
             </div>
         </div>
 
+        <div class="form-group">
+            <label>文檔導出</label>
+            <button class="btn-export-word" onclick="exportToWordReport()">📝 匯出保良局服務記錄表 (Word)</button>
+        </div>
+
         <div style="background:#eee; height:1px; margin:20px 0;"></div>
 
         <div class="form-group" id="log-input-section">
             <label id="log-input-label">新增聯絡紀錄</label>
             <input type="date" id="log-date" style="margin-bottom:10px;">
             <div class="option-grid">
-                <div class="opt-btn" id="lt-Phone" onclick="setLogType('Phone')">📞 電話</div>
-                <div class="opt-btn" id="lt-InPerson" onclick="setLogType('InPerson')">🫂 面見</div>
+                <div class="opt-btn" id="lt-Phone" onclick="setLogType('Phone')">TC (電話)</div>
+                <div class="opt-btn" id="lt-InPerson" onclick="setLogType('InPerson')">OI (面見)</div>
             </div>
             <textarea id="log-text" placeholder="紀錄內容..." rows="3"></textarea>
             <button id="save-log-btn" onclick="saveLogEntry()" style="width:100%; margin-top:10px; background:var(--success); color:white; border:none; padding:12px; border-radius:10px; font-weight:bold; cursor:pointer;">儲存紀錄</button>
             <button id="cancel-edit-log-btn" onclick="cancelLogEdit()" style="width:100%; margin-top:5px; background:#eee; color:#666; border:none; padding:8px; border-radius:10px; display:none;">取消修改</button>
         </div>
 
-        <div style="margin: 15px 0;">
-            <label>管理紀錄</label>
-            <button class="btn-export-single" id="btn-single-export" onclick="exportSingleCaseLogs()">📑 匯出此個案紀錄 (20字一行)</button>
-            <div id="modal-log-list"></div>
-        </div>
+        <div id="modal-log-list"></div>
 
         <div style="margin-top:30px;">
             <button class="btn-full" style="background:var(--primary); color:white;" onclick="saveFullCase()">儲存所有資料</button>
-            <button class="btn-full" style="background:var(--warning); color:white;" id="quick-close-btn" onclick="showConfirm('close')">結束個案</button>
-            <center><button style="background:none; border:none; color:var(--danger); text-decoration:underline; cursor:pointer;" id="del-btn" onclick="showConfirm('delete')">刪除個案</button></center>
+            <button class="btn-full" style="background:var(--warning); color:white;" onclick="showConfirm('close')">結束個案</button>
+            <center><button style="background:none; border:none; color:var(--danger); text-decoration:underline; cursor:pointer;" onclick="showConfirm('delete')">刪除個案</button></center>
         </div>
     </div>
 </div>
 
 <script>
-    let cases = JSON.parse(localStorage.getItem('elderly_cases_v9')) || [];
+    let cases = JSON.parse(localStorage.getItem('elderly_cases_final')) || [];
     let tempStatus = 'Active', tempType = 'Counselling', tempLogType = 'Phone', tempPriority = 'Normal', currentFilter = 'ALL';
 
     window.onload = () => { renderCases(); };
-    function saveToLocal() { localStorage.setItem('elderly_cases_v9', JSON.stringify(cases)); }
+    function saveToLocal() { localStorage.setItem('elderly_cases_final', JSON.stringify(cases)); }
+
+    function updateStats() {
+        const activeCases = cases.filter(c => c.status === 'Active');
+        document.getElementById('stat-counselling').innerText = activeCases.filter(c => c.caseType === 'Counselling').length;
+        document.getElementById('stat-hidden').innerText = activeCases.filter(c => c.caseType === 'Hidden').length;
+    }
 
     function getRemainingDays(lastDateStr) {
         if (!lastDateStr) return null;
@@ -171,23 +194,69 @@
         return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     }
 
-    // --- 修改紀錄邏輯 ---
+    // --- Word 匯出 (20字換行) ---
+    function exportToWordReport() {
+        const id = document.getElementById('internal-id').value;
+        const c = cases.find(x => x.id === id);
+        if (!c || c.contactLog.length === 0) return alert("尚無紀錄可匯出");
+
+        let tableRows = c.contactLog.map(l => {
+            let note = l.note || "";
+            let formattedNote = "";
+            for (let i = 0; i < note.length; i += 20) {
+                formattedNote += note.substring(i, i + 20) + "<br>";
+            }
+            const typeLabel = l.type === 'Phone' ? 'TC' : 'OI';
+            return `<tr>
+                <td style="border:1px solid black; padding:5px;">${l.date}</td>
+                <td style="border:1px solid black; padding:5px; text-align:center;">${typeLabel}</td>
+                <td style="border:1px solid black; padding:5px;">案主</td>
+                <td style="border:1px solid black; padding:5px;">${formattedNote}</td>
+                <td style="border:1px solid black; padding:5px;"></td>
+            </tr>`;
+        }).join('');
+
+        const html = `
+            <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+            <head><meta charset='utf-8'></head>
+            <body>
+                <h2 style="text-align:center;">保良局張惠萍皇后山喜悦薈服務記錄表</h2>
+                <p>案主姓名: ${c.name} &nbsp;&nbsp;&nbsp; 檔案號碼: ${c.caseNo}</p>
+                <table style="width:100%; border-collapse:collapse; border:1px solid black;">
+                    <thead>
+                        <tr style="background:#f2f2f2;">
+                            <th style="border:1px solid black;">日期</th>
+                            <th style="border:1px solid black;">方式</th>
+                            <th style="border:1px solid black;">接觸人/機構</th>
+                            <th style="border:1px solid black;">資料/服務提供 (20字一行)</th>
+                            <th style="border:1px solid black;">備註</th>
+                        </tr>
+                    </thead>
+                    <tbody>${tableRows}</tbody>
+                </table>
+                <p style="font-size:10pt;">方式：TC=電話接觸, OI=面談, HV=家訪</p>
+            </body></html>`;
+
+        const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `${c.name}_服務記錄表.doc`;
+        link.click();
+    }
+
+    // --- 修改/新增紀錄邏輯 ---
     function editLog(index) {
         const id = document.getElementById('internal-id').value;
         const c = cases.find(x => x.id === id);
-        // 注意：這裡直接抓對應陣列索引
         const log = c.contactLog[index];
-
         document.getElementById('editing-log-index').value = index;
         document.getElementById('log-date').value = log.date;
         document.getElementById('log-text').value = log.note;
         setLogType(log.type);
-
         document.getElementById('log-input-label').innerText = "修改紀錄中...";
         document.getElementById('save-log-btn').innerText = "更新此筆紀錄";
         document.getElementById('save-log-btn').style.background = "var(--warning)";
         document.getElementById('cancel-edit-log-btn').style.display = "block";
-        document.getElementById('log-input-section').scrollIntoView({ behavior: 'smooth' });
     }
 
     function cancelLogEdit() {
@@ -205,40 +274,40 @@
         const note = document.getElementById('log-text').value;
         const date = document.getElementById('log-date').value;
         const editIdx = parseInt(document.getElementById('editing-log-index').value);
-
-        if(!id) return alert("請先儲存個案基本資料");
-        if(!note || !date) return alert("請填寫內容與日期");
-        
+        if(!id) return alert("請先保存個案基本資料");
+        if(!note || !date) return alert("請填寫內容");
         const idx = cases.findIndex(x => x.id === id);
-        
         if (editIdx > -1) {
             cases[idx].contactLog[editIdx] = { date, note, type: tempLogType };
         } else {
             cases[idx].contactLog.push({ date, note, type: tempLogType });
         }
-
-        const latestDate = cases[idx].contactLog.reduce((max, p) => p.date > max ? p.date : max, "");
-        cases[idx].lastContactDate = latestDate;
-
+        cases[idx].lastContactDate = cases[idx].contactLog.reduce((max, p) => p.date > max ? p.date : max, "");
         saveToLocal();
         renderLogs(cases[idx].contactLog);
         renderCases();
         cancelLogEdit();
     }
 
-    function renderLogs(logs) {
-        // 反轉顯示以保持最新在最前，但編輯索引需對應原陣列
-        const logHtml = (logs || []).map((l, index) => `
-            <div class="log-item">
-                <button class="log-edit-btn" onclick="editLog(${index})">✏️ 修改</button>
-                <span class="log-date-badge">${l.date} | ${l.type === 'Phone' ? '📞 電話' : '🫂 面見'}</span>
-                <div style="white-space: pre-wrap;">${l.note}</div>
-            </div>
-        `).reverse().join('');
-        document.getElementById('modal-log-list').innerHTML = logHtml;
+    // --- Excel 匯入/導出 ---
+    function exportToExcel() {
+        if (cases.length === 0) return alert("無資料");
+        let rows = [];
+        cases.forEach(c => {
+            if (c.contactLog && c.contactLog.length > 0) {
+                c.contactLog.forEach(log => {
+                    rows.push({ "個案編號": c.caseNo, "姓名": c.name, "狀態": c.status, "優先級": c.priority, "性質": c.caseType, "紀錄日期": log.date, "紀錄內容": log.note, "聯絡方式": log.type === 'Phone' ? 'TC' : 'OI' });
+                });
+            } else {
+                rows.push({ "個案編號": c.caseNo, "姓名": c.name, "狀態": c.status, "優先級": c.priority, "性質": c.caseType, "紀錄日期": "無", "紀錄內容": "無", "聯絡方式": "-" });
+            }
+        });
+        const ws = XLSX.utils.json_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "全體紀錄");
+        XLSX.writeFile(wb, `Cases_Export.xlsx`);
     }
 
-    // --- 強化：含紀錄的匯入邏輯 ---
     function importFromExcel(event) {
         const file = event.target.files[0];
         const reader = new FileReader();
@@ -246,112 +315,28 @@
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
             const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-
             json.forEach(row => {
                 const caseNo = String(row["個案編號"] || "").trim();
-                const name = String(row["姓名"] || "未命名").trim();
-                const logDate = row["紀錄日期"];
-                const logNote = row["紀錄內容"];
-                const logTypeStr = row["聯絡方式"];
-
-                if (!caseNo && !name) return;
-
-                // 1. 尋找現有個案或建立新個案
-                let targetCase = cases.find(c => c.caseNo === caseNo && caseNo !== "");
-                if (!targetCase) {
-                    targetCase = {
-                        id: Date.now().toString() + Math.random(),
-                        caseNo: caseNo,
-                        name: name,
-                        status: row["狀態"] || "Active",
-                        priority: row["優先級"] || "Normal",
-                        caseType: row["性質"] || "Counselling",
-                        lastContactDate: "",
-                        contactLog: [],
-                        isPinned: false
-                    };
-                    cases.push(targetCase);
+                if (!caseNo) return;
+                let target = cases.find(c => c.caseNo === caseNo);
+                if (!target) {
+                    target = { id: Date.now().toString() + Math.random(), caseNo, name: row["姓名"], status: row["狀態"] || "Active", priority: row["優先級"] || "Normal", caseType: row["性質"] || "Counselling", contactLog: [], lastContactDate: "", isPinned: false };
+                    cases.push(target);
                 }
-
-                // 2. 處理紀錄匯入
-                if (logDate && logNote && logNote !== "無紀錄") {
-                    // 檢查是否已有相同日期與內容的紀錄，避免重複匯入
-                    const isDuplicate = targetCase.contactLog.some(l => String(l.date) === String(logDate) && l.note === String(logNote));
-                    if (!isDuplicate) {
-                        targetCase.contactLog.push({
-                            date: String(logDate),
-                            note: String(logNote),
-                            type: (logTypeStr === "面見" || logTypeStr === "🫂 面見") ? "InPerson" : "Phone"
-                        });
-                    }
+                if (row["紀錄日期"] && row["紀錄日期"] !== "無") {
+                    const isDup = target.contactLog.some(l => l.date === String(row["紀錄日期"]) && l.note === String(row["紀錄內容"]));
+                    if (!isDup) target.contactLog.push({ date: String(row["紀錄日期"]), note: String(row["紀錄內容"]), type: (row["聯絡方式"] === 'OI') ? "InPerson" : "Phone" });
                 }
-
-                // 3. 校正最後聯絡日期
-                if (targetCase.contactLog.length > 0) {
-                    targetCase.lastContactDate = targetCase.contactLog.reduce((max, p) => p.date > max ? p.date : max, "");
-                }
+                target.lastContactDate = target.contactLog.reduce((max, p) => p.date > max ? p.date : max, "");
             });
-
-            saveToLocal();
-            renderCases();
-            alert("匯入成功！系統已根據編號自動對應並追加歷史紀錄。");
-            event.target.value = '';
+            saveToLocal(); renderCases(); alert("匯入成功"); event.target.value = "";
         };
         reader.readAsArrayBuffer(file);
     }
 
-    // --- 原有功能函數 ---
-    function splitTextPerTwentyChars(text) {
-        if (!text) return "";
-        let result = "";
-        for (let i = 0; i < text.length; i += 20) { result += text.substring(i, i + 20) + "\n"; }
-        return result.trim();
-    }
-
-    function exportToExcel() {
-        if (cases.length === 0) return alert("無資料");
-        let rows = [];
-        cases.forEach(c => {
-            if (c.contactLog && c.contactLog.length > 0) {
-                c.contactLog.forEach((log, idx) => {
-                    rows.push({ 
-                        "個案編號": c.caseNo, "姓名": c.name, "狀態": c.status, 
-                        "優先級": c.priority, "性質": c.caseType, 
-                        "紀錄日期": log.date, "紀錄內容": log.note, 
-                        "聯絡方式": log.type === 'Phone' ? '電話' : '面見' 
-                    });
-                });
-            } else {
-                rows.push({ 
-                    "個案編號": c.caseNo, "姓名": c.name, "狀態": c.status, 
-                    "優先級": c.priority, "性質": c.caseType, 
-                    "紀錄日期": "無", "紀錄內容": "無紀錄", "聯絡方式": "-" 
-                });
-            }
-        });
-        const ws = XLSX.utils.json_to_sheet(rows);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "全體紀錄");
-        XLSX.writeFile(wb, `Case_Data_${new Date().toISOString().split('T')[0]}.xlsx`);
-    }
-
-    function exportSingleCaseLogs() {
-        const id = document.getElementById('internal-id').value;
-        const c = cases.find(x => x.id === id);
-        if (!c || c.contactLog.length === 0) return alert("沒有紀錄");
-        const logData = c.contactLog.map(l => ({ 
-            "聯絡日期": l.date, 
-            "聯絡方式": l.type === 'Phone' ? '📞 電話' : '🫂 面見', 
-            "服務紀錄 (20字換行)": splitTextPerTwentyChars(l.note) 
-        })).reverse();
-        const ws = XLSX.utils.json_to_sheet(logData);
-        ws['!cols'] = [{ wch: 15 }, { wch: 12 }, { wch: 45 }];
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "個人紀錄");
-        XLSX.writeFile(wb, `${c.caseNo}_${c.name}_紀錄.xlsx`);
-    }
-
+    // --- UI 渲染與過濾 ---
     function renderCases() {
+        updateStats();
         const list = document.getElementById('case-list');
         const search = document.getElementById('search-box').value.toLowerCase();
         let filtered = cases.filter(c => {
@@ -363,10 +348,9 @@
         list.innerHTML = filtered.map(c => {
             const daysLeft = getRemainingDays(c.lastContactDate);
             const isAlert = daysLeft !== null && daysLeft < 15;
-            return `
-            <div class="card ${c.status === 'Closed' ? 'closed' : ''} ${c.isPinned ? 'pinned' : ''} ${isAlert && c.status === 'Active' ? 'urgent-alert' : ''}" onclick="openEditModal('${c.id}')">
+            return `<div class="card ${c.status === 'Closed' ? 'closed' : ''} ${c.isPinned ? 'pinned' : ''} ${isAlert && c.status === 'Active' ? 'urgent-alert' : ''}" onclick="openEditModal('${c.id}')">
                 <div class="card-content">
-                    <div class="case-number-tag">${c.caseNo || 'N/A'}</div>
+                    <div class="case-number-tag">${c.caseNo}</div>
                     <div style="font-weight:bold; font-size:18px;">${c.name}</div>
                     <div class="tag-row">
                         <span class="tag ${c.priority === 'Urgent' ? 'urgent-tag' : 'normal-tag'}">${c.priority === 'Urgent' ? '🔴 緊急' : '🔵 非緊急'}</span>
@@ -386,36 +370,31 @@
         document.getElementById('internal-id').value = c.id;
         document.getElementById('f-case-no').value = c.caseNo;
         document.getElementById('f-name').value = c.name;
-        cancelLogEdit(); 
         setCaseStatus(c.status); setCaseType(c.caseType); setPriority(c.priority);
-        renderLogs(c.contactLog);
+        renderLogs(c.contactLog); cancelLogEdit();
         document.getElementById('case-modal').style.display = 'flex';
     }
 
+    function renderLogs(logs) {
+        document.getElementById('modal-log-list').innerHTML = (logs || []).map((l, idx) => `
+            <div class="log-item">
+                <button class="log-edit-btn" onclick="editLog(${idx})">✏️</button>
+                <span class="log-date-badge">${l.date} | ${l.type === 'Phone' ? 'TC' : 'OI'}</span>
+                <div style="white-space: pre-wrap;">${l.note}</div>
+            </div>`).reverse().join('');
+    }
+
+    // --- 輔助函數 ---
     function setPriority(p) { tempPriority = p; document.getElementById('p-Urgent').classList.toggle('active', p==='Urgent'); document.getElementById('p-Normal').classList.toggle('active', p==='Normal'); }
     function setCaseStatus(s) { tempStatus = s; document.getElementById('st-Active').classList.toggle('active', s==='Active'); document.getElementById('st-Closed').classList.toggle('active', s==='Closed'); }
     function setCaseType(t) { tempType = t; document.getElementById('t-Counselling').classList.toggle('active', t==='Counselling'); document.getElementById('t-Hidden').classList.toggle('active', t==='Hidden'); }
     function setLogType(lt) { tempLogType = lt; document.getElementById('lt-Phone').classList.toggle('active', lt==='Phone'); document.getElementById('lt-InPerson').classList.toggle('active', lt==='InPerson'); }
-    function openAddModal() { document.getElementById('internal-id').value = ''; document.getElementById('f-case-no').value = ''; document.getElementById('f-name').value = ''; cancelLogEdit(); document.getElementById('modal-log-list').innerHTML = ''; setCaseStatus('Active'); setCaseType('Counselling'); setPriority('Normal'); document.getElementById('case-modal').style.display = 'flex'; }
-    function saveFullCase() { const id = document.getElementById('internal-id').value; const caseNo = document.getElementById('f-case-no').value; const name = document.getElementById('f-name').value; if(!caseNo || !name) return alert("必填"); const data = { caseNo, name, status: tempStatus, caseType: tempType, priority: tempPriority }; if(id) { const i = cases.findIndex(x => x.id === id); cases[i] = { ...cases[i], ...data }; } else { cases.push({ id: Date.now().toString(), ...data, contactLog: [], lastContactDate: '', isPinned: false }); } saveToLocal(); renderCases(); closeModal(); }
+    function openAddModal() { document.getElementById('internal-id').value = ''; document.getElementById('f-case-no').value = ''; document.getElementById('f-name').value = ''; setCaseStatus('Active'); setCaseType('Counselling'); setPriority('Normal'); renderLogs([]); document.getElementById('case-modal').style.display = 'flex'; }
+    function saveFullCase() { const id = document.getElementById('internal-id').value; const data = { caseNo: document.getElementById('f-case-no').value, name: document.getElementById('f-name').value, status: tempStatus, caseType: tempType, priority: tempPriority }; if(id) { const i = cases.findIndex(x => x.id === id); cases[i] = {...cases[i], ...data}; } else { cases.push({id: Date.now().toString(), ...data, contactLog: [], lastContactDate: '', isPinned: false}); } saveToLocal(); renderCases(); closeModal(); }
     function closeModal() { document.getElementById('case-modal').style.display = 'none'; }
+    function togglePin(e, id) { e.stopPropagation(); const idx = cases.findIndex(x => x.id === id); cases[idx].isPinned = !cases[idx].isPinned; saveToLocal(); renderCases(); }
     function setFilter(filter, btn) { currentFilter = filter; document.querySelectorAll('.filter-tag').forEach(b => b.classList.remove('active')); btn.classList.add('active'); renderCases(); }
-    function togglePin(e, id) { e.stopPropagation(); const idx = cases.findIndex(x => x.id === id); if (!cases[idx].isPinned && cases.filter(c => c.isPinned).length >= 3) return alert("最多3個"); cases[idx].isPinned = !cases[idx].isPinned; saveToLocal(); renderCases(); }
-    
-    function showConfirm(action) {
-        const id = document.getElementById('internal-id').value;
-        if (!id) return;
-        if (action === 'delete') {
-            if (confirm("確定刪除此個案？此操作不可恢復。")) {
-                cases = cases.filter(x => x.id !== id);
-                saveToLocal(); renderCases(); closeModal();
-            }
-        } else if (action === 'close') {
-            const i = cases.findIndex(x => x.id === id);
-            cases[i].status = 'Closed';
-            saveToLocal(); renderCases(); closeModal();
-        }
-    }
+    function showConfirm(action) { const id = document.getElementById('internal-id').value; if(action==='delete' && confirm("確定刪除？")) { cases = cases.filter(x => x.id !== id); saveToLocal(); renderCases(); closeModal(); } else if(action==='close') { const i = cases.findIndex(x => x.id === id); cases[i].status = 'Closed'; saveToLocal(); renderCases(); closeModal(); } }
 </script>
 </body>
 </html>
