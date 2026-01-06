@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elderly Case Manager - Log Export Professional</title>
+    <title>Elderly Case Manager - Professional 20-Char Log</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -59,7 +59,7 @@
         .btn-full { width: 100%; padding: 16px; border-radius: 14px; font-weight: bold; cursor: pointer; border: none; margin-bottom: 12px; }
         .log-item { background: #f9f9fb; padding: 10px; border-radius: 10px; margin-bottom: 8px; border-left: 4px solid #ddd; font-size: 14px; }
         
-        .btn-export-single { background: #e1f5fe; color: #0288d1; border: 1px solid #b3e5fc; padding: 8px; border-radius: 8px; width: 100%; margin-bottom: 15px; cursor: pointer; font-weight: bold; }
+        .btn-export-single { background: #e1f5fe; color: #0288d1; border: 1px solid #b3e5fc; padding: 10px; border-radius: 8px; width: 100%; margin-bottom: 15px; cursor: pointer; font-weight: bold; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -126,7 +126,7 @@
         <div style="background:#eee; height:1px; margin:20px 0;"></div>
 
         <div class="form-group">
-            <label>新增聯絡紀錄</label>
+            <label>新增聯絡紀錄 (90天倒數)</label>
             <input type="date" id="log-date" style="margin-bottom:10px;">
             <div class="option-grid">
                 <div class="opt-btn" id="lt-Phone" onclick="setLogType('Phone')">📞 電話</div>
@@ -137,8 +137,8 @@
         </div>
 
         <div style="margin: 15px 0;">
-            <label>過往紀錄</label>
-            <button class="btn-export-single" id="btn-single-export" onclick="exportSingleCaseLogs()">📑 匯出此個案紀錄 (10字一行排版)</button>
+            <label>管理紀錄</label>
+            <button class="btn-export-single" id="btn-single-export" onclick="exportSingleCaseLogs()">📑 匯出此個案紀錄 (20字一行排版)</button>
             <div id="modal-log-list"></div>
         </div>
 
@@ -159,11 +159,12 @@
 </div>
 
 <script>
-    let cases = JSON.parse(localStorage.getItem('elderly_cases_v7')) || [];
+    // 數據持久化版本號建議增加以區分
+    let cases = JSON.parse(localStorage.getItem('elderly_cases_v8')) || [];
     let tempStatus = 'Active', tempType = 'Counselling', tempLogType = 'Phone', tempPriority = 'Normal', currentFilter = 'ALL';
 
     window.onload = () => { renderCases(); };
-    function saveToLocal() { localStorage.setItem('elderly_cases_v7', JSON.stringify(cases)); }
+    function saveToLocal() { localStorage.setItem('elderly_cases_v8', JSON.stringify(cases)); }
 
     function getRemainingDays(lastDateStr) {
         if (!lastDateStr) return null;
@@ -173,49 +174,45 @@
         return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     }
 
-    // --- 核心邏輯：文字切分 (每10個字一行) ---
-    function splitTextPerTenChars(text) {
+    // --- 核心邏輯更新：每 20 個字插入一個換行 ---
+    function splitTextPerTwentyChars(text) {
         if (!text) return "";
         let result = "";
-        for (let i = 0; i < text.length; i += 10) {
-            result += text.substring(i, i + 10) + "\n";
+        for (let i = 0; i < text.length; i += 20) {
+            result += text.substring(i, i + 20) + "\n";
         }
         return result.trim();
     }
 
-    // --- 功能 1：全體匯出 (包含日誌與日期) ---
+    // --- 功能 1：全體匯出 ---
     function exportToExcel() {
         if (cases.length === 0) return alert("無資料");
-        let exportRows = [];
-
+        let rows = [];
         cases.forEach(c => {
             if (c.contactLog && c.contactLog.length > 0) {
-                c.contactLog.forEach((log, index) => {
-                    exportRows.push({
-                        "個案編號": index === 0 ? c.caseNo : "",
-                        "姓名": index === 0 ? c.name : "",
-                        "個案狀態": index === 0 ? c.status : "",
-                        "優先級": index === 0 ? c.priority : "",
-                        "性質": index === 0 ? c.caseType : "",
+                c.contactLog.forEach((log, idx) => {
+                    rows.push({
+                        "個案編號": idx === 0 ? c.caseNo : "",
+                        "姓名": idx === 0 ? c.name : "",
+                        "狀態": idx === 0 ? c.status : "",
+                        "優先級": idx === 0 ? c.priority : "",
+                        "性質": idx === 0 ? c.caseType : "",
                         "紀錄日期": log.date,
                         "紀錄內容": log.note,
                         "聯絡方式": log.type === 'Phone' ? '電話' : '面見'
                     });
                 });
             } else {
-                exportRows.push({
-                    "個案編號": c.caseNo, "姓名": c.name, "個案狀態": c.status, "優先級": c.priority, "性質": c.caseType, "紀錄日期": "無", "紀錄內容": "無紀錄", "聯絡方式": "-"
-                });
+                rows.push({ "個案編號": c.caseNo, "姓名": c.name, "狀態": c.status, "優先級": c.priority, "性質": c.caseType, "紀錄日期": "無", "紀錄內容": "無紀錄", "聯絡方式": "-" });
             }
         });
-
-        const ws = XLSX.utils.json_to_sheet(exportRows);
+        const ws = XLSX.utils.json_to_sheet(rows);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "全體個案日誌");
-        XLSX.writeFile(wb, `Full_Cases_Logs_${new Date().toISOString().split('T')[0]}.xlsx`);
+        XLSX.utils.book_append_sheet(wb, ws, "全體紀錄");
+        XLSX.writeFile(wb, `Elderly_All_Logs_${new Date().toISOString().split('T')[0]}.xlsx`);
     }
 
-    // --- 功能 2：單一個案匯出 (10字一行排版) ---
+    // --- 功能 2：單個個案匯出 (20字換行) ---
     function exportSingleCaseLogs() {
         const id = document.getElementById('internal-id').value;
         const c = cases.find(x => x.id === id);
@@ -224,20 +221,18 @@
         const logData = c.contactLog.map(l => ({
             "聯絡日期": l.date,
             "聯絡方式": l.type === 'Phone' ? '📞 電話' : '🫂 面見',
-            "服務紀錄 (每10字換行)": splitTextPerTenChars(l.note)
+            "服務紀錄 (每20字換行)": splitTextPerTwentyChars(l.note)
         })).reverse();
 
         const ws = XLSX.utils.json_to_sheet(logData);
-        
-        // 設定欄位寬度讓換行好看一點
-        ws['!cols'] = [{ wch: 15 }, { wch: 12 }, { wch: 25 }];
+        ws['!cols'] = [{ wch: 15 }, { wch: 12 }, { wch: 45 }]; // 加寬最後一欄
 
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "服務紀錄");
+        XLSX.utils.book_append_sheet(wb, ws, "個人紀錄");
         XLSX.writeFile(wb, `${c.caseNo}_${c.name}_紀錄.xlsx`);
     }
 
-    // --- 介面渲染與操作 ---
+    // --- 介面控制邏輯 ---
     function setFilter(filter, btn) {
         currentFilter = filter;
         document.querySelectorAll('.filter-tag').forEach(b => b.classList.remove('active'));
@@ -276,7 +271,7 @@
         }).join('');
     }
 
-    // --- 原有 Modal 控制 ---
+    // --- Modal 內部按鈕 ---
     function setPriority(p) { tempPriority = p; document.getElementById('p-Urgent').classList.toggle('active', p==='Urgent'); document.getElementById('p-Normal').classList.toggle('active', p==='Normal'); }
     function setCaseStatus(s) { tempStatus = s; document.getElementById('st-Active').classList.toggle('active', s==='Active'); document.getElementById('st-Closed').classList.toggle('active', s==='Closed'); }
     function setCaseType(t) { tempType = t; document.getElementById('t-Counselling').classList.toggle('active', t==='Counselling'); document.getElementById('t-Hidden').classList.toggle('active', t==='Hidden'); }
@@ -312,14 +307,14 @@
 
     function saveFullCase() {
         const id = document.getElementById('internal-id').value; const caseNo = document.getElementById('f-case-no').value; const name = document.getElementById('f-name').value;
-        if(!caseNo || !name) return alert("必填");
+        if(!caseNo || !name) return alert("必填項目未填");
         const data = { caseNo, name, status: tempStatus, caseType: tempType, priority: tempPriority };
         if(id) { const i = cases.findIndex(x => x.id === id); cases[i] = { ...cases[i], ...data }; }
         else { cases.push({ id: Date.now().toString(), ...data, contactLog: [], lastContactDate: '', isPinned: false }); }
         saveToLocal(); renderCases(); closeModal();
     }
 
-    function togglePin(e, id) { e.stopPropagation(); const idx = cases.findIndex(x => x.id === id); if (!cases[idx].isPinned && cases.filter(c => c.isPinned).length >= 3) return alert("最多3個"); cases[idx].isPinned = !cases[idx].isPinned; saveToLocal(); renderCases(); }
+    function togglePin(e, id) { e.stopPropagation(); const idx = cases.findIndex(x => x.id === id); if (!cases[idx].isPinned && cases.filter(c => c.isPinned).length >= 3) return alert("最多3個頂置"); cases[idx].isPinned = !cases[idx].isPinned; saveToLocal(); renderCases(); }
     function closeModal() { document.getElementById('case-modal').style.display = 'none'; }
     function showConfirm(mode) { 
         document.getElementById('confirm-dialog').style.display = 'block';
@@ -335,16 +330,18 @@
         const file = event.target.files[0];
         const reader = new FileReader();
         reader.onload = (e) => {
-            const json = XLSX.utils.sheet_to_json(XLSX.read(new Uint8Array(e.target.result), { type: 'array' }).Sheets[XLSX.read(new Uint8Array(e.target.result), { type: 'array' }).SheetNames[0]]);
+            const data = new Uint8Array(e.target.result);
+            const json = XLSX.utils.sheet_to_json(XLSX.read(data, { type: 'array' }).Sheets[XLSX.read(data, { type: 'array' }).SheetNames[0]]);
             json.forEach(row => {
-                if (!cases.find(c => c.caseNo === String(row["個案編號"]))) {
+                const cNo = String(row["個案編號"] || "");
+                if (cNo && !cases.find(c => c.caseNo === cNo)) {
                     cases.push({
-                        id: Date.now().toString() + Math.random(), caseNo: String(row["個案編號"] || ""), name: String(row["姓名"] || ""), 
+                        id: Date.now().toString() + Math.random(), caseNo: cNo, name: String(row["姓名"] || "未命名"), 
                         status: "Active", priority: "Normal", caseType: "Counselling", lastContactDate: "", contactLog: [], isPinned: false
                     });
                 }
             });
-            saveToLocal(); renderCases(); alert("匯入成功");
+            saveToLocal(); renderCases(); alert("資料匯入成功");
         };
         reader.readAsArrayBuffer(file);
     }
