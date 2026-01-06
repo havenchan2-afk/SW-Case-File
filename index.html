@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elderly Case Manager - Professional Word Splitter</title>
+    <title>Elderly Case Manager - Full System</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -55,7 +55,6 @@
         
         .log-item { background: #f9f9fb; padding: 12px; border-radius: 10px; margin-bottom: 10px; border-left: 4px solid #ddd; position: relative; }
         .log-edit-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--primary); cursor: pointer; font-size: 14px; }
-        
         .btn-export-word { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; padding: 12px; border-radius: 8px; width: 100%; margin-bottom: 15px; cursor: pointer; font-weight: bold; font-size: 14px; }
     </style>
 </head>
@@ -74,18 +73,10 @@
 
 <div class="controls">
     <input type="text" class="search-input" id="search-box" placeholder="🔍 搜尋編號、姓名..." oninput="renderCases()">
-    
     <div class="stats-container">
-        <div class="stats-box">
-            <span class="stats-val" id="stat-counselling">0</span>
-            <span class="stats-label">ACTIVE 輔導個案</span>
-        </div>
-        <div class="stats-box">
-            <span class="stats-val" id="stat-hidden">0</span>
-            <span class="stats-label">ACTIVE 隱蔽個案</span>
-        </div>
+        <div class="stats-box"><span class="stats-val" id="stat-counselling">0</span><span class="stats-label">ACTIVE 輔導個案</span></div>
+        <div class="stats-box"><span class="stats-val" id="stat-hidden">0</span><span class="stats-label">ACTIVE 隱蔽個案</span></div>
     </div>
-
     <div class="filter-bar">
         <button class="filter-tag active" onclick="setFilter('ALL', this)">全部</button>
         <button class="filter-tag" onclick="setFilter('Counselling', this)">🤝 輔導</button>
@@ -99,50 +90,38 @@
 
 <div class="modal-overlay" id="case-modal">
     <div class="modal-content">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
             <h2 style="margin:0;">個案詳情</h2>
             <button onclick="closeModal()" style="border:none; background:none; color:var(--primary); font-weight:bold;">關閉</button>
         </div>
-        
         <input type="hidden" id="internal-id">
         <input type="hidden" id="editing-log-index" value="-1">
         
-        <div class="form-group">
-            <label>個案狀態</label>
-            <div class="option-grid">
-                <div class="opt-btn" id="st-Active" onclick="setCaseStatus('Active')">🟢 Active</div>
-                <div class="opt-btn" id="st-Closed" onclick="setCaseStatus('Closed')">⚪ Closed</div>
-            </div>
-        </div>
+        <div class="form-group"><label>個案狀態</label><div class="option-grid">
+            <div class="opt-btn" id="st-Active" onclick="setCaseStatus('Active')">🟢 Active</div>
+            <div class="opt-btn" id="st-Closed" onclick="setCaseStatus('Closed')">⚪ Closed</div>
+        </div></div>
 
-        <div class="form-group">
-            <label>優先級</label>
-            <div class="option-grid">
-                <div class="opt-btn" id="p-Urgent" onclick="setPriority('Urgent')">🔴 緊急</div>
-                <div class="opt-btn" id="p-Normal" onclick="setPriority('Normal')">🔵 非緊急</div>
-            </div>
-        </div>
+        <div class="form-group"><label>優先級</label><div class="option-grid">
+            <div class="opt-btn" id="p-Urgent" onclick="setPriority('Urgent')">🔴 緊急</div>
+            <div class="opt-btn" id="p-Normal" onclick="setPriority('Normal')">🔵 非緊急</div>
+        </div></div>
 
         <div class="form-group"><label>個案編號</label><input type="text" id="f-case-no"></div>
         <div class="form-group"><label>長者姓名</label><input type="text" id="f-name"></div>
+        <div class="form-group"><label>個案性質</label><div class="option-grid">
+            <div class="opt-btn" id="t-Counselling" onclick="setCaseType('Counselling')">🤝 輔導</div>
+            <div class="opt-btn" id="t-Hidden" onclick="setCaseType('Hidden')">👤 隱蔽</div>
+        </div></div>
 
-        <div class="form-group">
-            <label>個案性質</label>
-            <div class="option-grid">
-                <div class="opt-btn" id="t-Counselling" onclick="setCaseType('Counselling')">🤝 輔導</div>
-                <div class="opt-btn" id="t-Hidden" onclick="setCaseType('Hidden')">👤 隱蔽</div>
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label>導出報表</label>
-            <button class="btn-export-word" onclick="exportToWordSplitRows()">📝 匯出服務記錄表 (跨行拆分)</button>
+        <div class="form-group"><label>導出報表</label>
+            <button class="btn-export-word" onclick="exportToWordSplitRows()">📝 匯出服務記錄表 (Word 跨行拆分)</button>
         </div>
 
         <div style="background:#eee; height:1px; margin:20px 0;"></div>
 
-        <div class="form-group" id="log-input-section">
-            <label id="log-input-label">新增聯絡紀錄</label>
+        <div class="form-group">
+            <label id="log-input-label">聯絡紀錄</label>
             <input type="date" id="log-date" style="margin-bottom:10px;">
             <div class="option-grid">
                 <div class="opt-btn" id="lt-Phone" onclick="setLogType('Phone')">TC (電話)</div>
@@ -152,95 +131,93 @@
             <button id="save-log-btn" onclick="saveLogEntry()" style="width:100%; margin-top:10px; background:var(--success); color:white; border:none; padding:12px; border-radius:10px; font-weight:bold;">儲存紀錄</button>
             <button id="cancel-edit-log-btn" onclick="cancelLogEdit()" style="width:100%; margin-top:5px; background:#eee; display:none;">取消修改</button>
         </div>
-
         <div id="modal-log-list"></div>
 
         <div style="margin-top:30px;">
             <button class="btn-full" style="background:var(--primary); color:white;" onclick="saveFullCase()">儲存所有資料</button>
             <button class="btn-full" style="background:var(--warning); color:white;" onclick="showConfirm('close')">結束個案</button>
+            <center><button style="background:none; border:none; color:var(--danger); text-decoration:underline;" onclick="showConfirm('delete')">刪除個案</button></center>
         </div>
     </div>
 </div>
 
 <script>
-    let cases = JSON.parse(localStorage.getItem('elderly_cases_v15')) || [];
+    let cases = JSON.parse(localStorage.getItem('elderly_cases_v16')) || [];
     let tempStatus = 'Active', tempType = 'Counselling', tempLogType = 'Phone', tempPriority = 'Normal', currentFilter = 'ALL';
 
     window.onload = () => { renderCases(); };
-    function saveToLocal() { localStorage.setItem('elderly_cases_v15', JSON.stringify(cases)); }
+    function saveToLocal() { localStorage.setItem('elderly_cases_v16', JSON.stringify(cases)); }
 
-    // --- 核心 Word 匯出邏輯：每 20 字佔一個表格行 ---
+    // --- Excel 匯出功能 (修正後) ---
+    function exportToExcel() {
+        if (cases.length === 0) return alert("沒有資料可以匯出");
+        let exportData = [];
+        cases.forEach(c => {
+            if (c.contactLog && c.contactLog.length > 0) {
+                c.contactLog.forEach(l => {
+                    exportData.push({
+                        "個案編號": c.caseNo, "姓名": c.name, "狀態": c.status, "優先級": c.priority, "性質": c.caseType,
+                        "紀錄日期": l.date, "聯絡方式": l.type === 'Phone' ? 'TC' : 'OI', "紀錄內容": l.note
+                    });
+                });
+            } else {
+                exportData.push({ "個案編號": c.caseNo, "姓名": c.name, "狀態": c.status, "優先級": c.priority, "性質": c.caseType, "紀錄日期": "無", "聯絡方式": "-", "紀錄內容": "無紀錄" });
+            }
+        });
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Cases");
+        XLSX.writeFile(wb, "Elderly_Cases_Report.xlsx");
+    }
+
+    // --- Excel 匯入功能 ---
+    function importFromExcel(event) {
+        const file = event.target.files[0];
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+            json.forEach(row => {
+                const caseNo = String(row["個案編號"] || "").trim();
+                if (!caseNo) return;
+                let target = cases.find(c => c.caseNo === caseNo);
+                if (!target) {
+                    target = { id: Date.now().toString() + Math.random(), caseNo, name: row["姓名"], status: row["狀態"] || "Active", priority: row["優先級"] || "Normal", caseType: row["性質"] || "Counselling", contactLog: [], lastContactDate: "", isPinned: false };
+                    cases.push(target);
+                }
+                if (row["紀錄日期"] && row["紀錄日期"] !== "無") {
+                    const isDup = target.contactLog.some(l => l.date === String(row["紀錄日期"]) && l.note === String(row["紀錄內容"]));
+                    if (!isDup) target.contactLog.push({ date: String(row["紀錄日期"]), note: String(row["紀錄內容"]), type: (row["聯絡方式"] === 'OI') ? "InPerson" : "Phone" });
+                }
+                target.lastContactDate = target.contactLog.reduce((max, p) => p.date > max ? p.date : max, "");
+            });
+            saveToLocal(); renderCases(); alert("匯入成功"); event.target.value = "";
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    // --- Word 匯出 (跨行拆分 20字) ---
     function exportToWordSplitRows() {
         const id = document.getElementById('internal-id').value;
         const c = cases.find(x => x.id === id);
-        if (!c || c.contactLog.length === 0) return alert("尚無紀錄");
-
-        let tableHtml = "";
+        if (!c || c.contactLog.length === 0) return alert("無紀錄");
+        let tableRows = "";
         c.contactLog.forEach(log => {
             const note = log.note || "";
             const chunks = [];
-            // 每 20 字切割
-            for (let i = 0; i < note.length; i += 20) {
-                chunks.push(note.substring(i, i + 20));
-            }
-
-            // 第一行包含日期和方式
-            tableHtml += `
-                <tr>
-                    <td style="border:1px solid black; padding:5px; width:80px; text-align:center;">${log.date}</td>
-                    <td style="border:1px solid black; padding:5px; width:50px; text-align:center;">${log.type === 'Phone' ? 'TC' : 'OI'}</td>
-                    <td style="border:1px solid black; padding:5px; width:80px; text-align:center;">案主</td>
-                    <td style="border:1px solid black; padding:5px; font-size:11pt;">${chunks[0] || ""}</td>
-                    <td style="border:1px solid black; padding:5px; width:60px;"></td>
-                </tr>
-            `;
-
-            // 如果還有剩餘字數，順延到後面的表格行
+            for (let i = 0; i < note.length; i += 20) chunks.push(note.substring(i, i + 20));
+            tableRows += `<tr><td style="border:1px solid black;padding:5px;text-align:center;">${log.date}</td><td style="border:1px solid black;padding:5px;text-align:center;">${log.type==='Phone'?'TC':'OI'}</td><td style="border:1px solid black;padding:5px;text-align:center;">案主</td><td style="border:1px solid black;padding:5px;">${chunks[0]||""}</td><td style="border:1px solid black;padding:5px;"></td></tr>`;
             for (let j = 1; j < chunks.length; j++) {
-                tableHtml += `
-                    <tr>
-                        <td style="border:1px solid black; padding:5px;"></td>
-                        <td style="border:1px solid black; padding:5px;"></td>
-                        <td style="border:1px solid black; padding:5px;"></td>
-                        <td style="border:1px solid black; padding:5px; font-size:11pt;">${chunks[j]}</td>
-                        <td style="border:1px solid black; padding:5px;"></td>
-                    </tr>
-                `;
+                tableRows += `<tr><td style="border:1px solid black;padding:5px;"></td><td style="border:1px solid black;padding:5px;"></td><td style="border:1px solid black;padding:5px;"></td><td style="border:1px solid black;padding:5px;">${chunks[j]}</td><td style="border:1px solid black;padding:5px;"></td></tr>`;
             }
         });
-
-        const template = `
-            <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-            <head><meta charset='utf-8'></head>
-            <body>
-                [span_1](start_span)<h2 style="text-align:center;">保良局張惠萍皇后山喜悦薈服務記錄表[span_1](end_span)</h2>
-                <div style="margin-bottom:10px;">
-                    <b>檔案號碼 :</b> ${c.caseNo} &nbsp;&nbsp;&nbsp; 
-                    <b>案主姓名:</b> ${c.name} &nbsp;&nbsp;&nbsp;
-                    <b>負責工作員:</b> ________________
-                </div>
-                <table style="width:100%; border-collapse:collapse; border:1px solid black;">
-                    <tr style="background:#f2f2f2; text-align:center; font-weight:bold;">
-                        <td style="border:1px solid black; width:15%;">日期</td>
-                        <td style="border:1px solid black; width:10%;">方式</td>
-                        <td style="border:1px solid black; width:15%;">接觸人</td>
-                        [span_2](start_span)<td style="border:1px solid black; width:45%;">資料/服務提供 (20字一行)[span_2](end_span)</td>
-                        <td style="border:1px solid black; width:15%;">備註</td>
-                    </tr>
-                    ${tableHtml}
-                </table>
-                <p style="font-size:9pt; margin-top:10px;">方式：TC = Telephone contact電話接觸; OI = Office Interview面談; [span_3](start_span)HV = Home visit家訪[span_3](end_span)</p>
-            </body></html>
-        `;
-
-        const blob = new Blob(['\ufeff', template], { type: 'application/msword' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `${c.name}_服務記錄表.doc`;
-        link.click();
+        const html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'></head><body><h2 style="text-align:center;">保良局張惠萍皇后山喜悦薈服務記錄表</h2><p>個案姓名: ${c.name} &nbsp;&nbsp;&nbsp; 編號: ${c.caseNo}</p><table style="width:100%;border-collapse:collapse;border:1px solid black;"><tr style="background:#eee;font-weight:bold;text-align:center;"><td style="border:1px solid black;width:15%;">日期</td><td style="border:1px solid black;width:10%;">方式</td><td style="border:1px solid black;width:15%;">接觸人</td><td style="border:1px solid black;width:45%;">服務提供 (20字一行)</td><td style="border:1px solid black;width:15%;">備註</td></tr>${tableRows}</table></body></html>`;
+        const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+        const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `${c.name}_紀錄表.doc`; link.click();
     }
 
-    // --- 原有功能：統計與倒數 ---
+    // --- 其他 UI 與核心功能 ---
     function updateStats() {
         const active = cases.filter(c => c.status === 'Active');
         document.getElementById('stat-counselling').innerText = active.filter(c => c.caseType === 'Counselling').length;
@@ -256,30 +233,21 @@
             if(currentFilter==='ALL') return m;
             return m && (c.caseType===currentFilter || c.priority===currentFilter);
         });
-        filtered.sort((a,b) => (!!a.isPinned !== !!b.isPinned ? (a.isPinned ? -1 : 1) : (a.status === 'Active' ? -1 : 1)));
+        filtered.sort((a,b) => (!!a.isPinned !== !!b.isPinned ? -1 : (a.status==='Active' ? -1 : 1)));
         list.innerHTML = filtered.map(c => {
             const nextDate = c.lastContactDate ? new Date(c.lastContactDate) : null;
             if(nextDate) nextDate.setDate(nextDate.getDate()+90);
             const days = nextDate ? Math.ceil((nextDate - new Date())/(1000*60*60*24)) : '需聯絡';
-            return `
-            <div class="card ${c.status==='Closed'?'closed':''} ${c.isPinned?'pinned':''} ${days<15&&c.status==='Active'?'urgent-alert':''}" onclick="openEditModal('${c.id}')">
+            return `<div class="card ${c.status==='Closed'?'closed':''} ${c.isPinned?'pinned':''} ${days<15&&c.status==='Active'?'urgent-alert':''}" onclick="openEditModal('${c.id}')">
                 <div class="card-content">
-                    <div class="case-number-tag">${c.caseNo}</div>
-                    <div style="font-weight:bold; font-size:18px;">${c.name}</div>
-                    <div class="tag-row">
-                        <span class="tag ${c.priority==='Urgent'?'urgent-tag':'normal-tag'}">${c.priority==='Urgent'?'🔴 緊急':'🔵 非緊急'}</span>
-                        <span class="tag" style="background:#eee;">${c.caseType==='Hidden'?'👤 隱蔽':'🤝 輔導'}</span>
-                    </div>
+                    <div class="case-number-tag">${c.caseNo}</div><div style="font-weight:bold; font-size:18px;">${c.name}</div>
+                    <div class="tag-row"><span class="tag ${c.priority==='Urgent'?'urgent-tag':'normal-tag'}">${c.priority==='Urgent'?'🔴 緊急':'🔵 非緊急'}</span><span class="tag" style="background:#eee;">${c.caseType==='Hidden'?'👤 隱蔽':'🤝 輔導'}</span></div>
                 </div>
-                <div class="card-right">
-                    <div class="countdown-box"><span class="countdown-num">${days}</span><span class="countdown-label">Days</span></div>
-                    <button class="pin-btn ${c.isPinned?'active':''}" onclick="togglePin(event,'${c.id}')">📌</button>
-                </div>
+                <div class="card-right"><div class="countdown-box"><span class="countdown-num">${days}</span><span class="countdown-label">Days</span></div><button class="pin-btn ${c.isPinned?'active':''}" onclick="togglePin(event,'${c.id}')">📌</button></div>
             </div>`;
         }).join('');
     }
 
-    // --- 原有功能：詳情、修改紀錄、Excel ---
     function openEditModal(id) {
         const c = cases.find(x => x.id === id);
         document.getElementById('internal-id').value = c.id;
@@ -295,7 +263,7 @@
         const note = document.getElementById('log-text').value;
         const date = document.getElementById('log-date').value;
         const editIdx = parseInt(document.getElementById('editing-log-index').value);
-        if(!id || !note || !date) return alert("必填項目缺失");
+        if(!id || !note || !date) return alert("必填");
         const idx = cases.findIndex(x => x.id === id);
         if(editIdx > -1) cases[idx].contactLog[editIdx] = { date, note, type: tempLogType };
         else cases[idx].contactLog.push({ date, note, type: tempLogType });
@@ -305,10 +273,8 @@
 
     function renderLogs(logs) {
         document.getElementById('modal-log-list').innerHTML = (logs||[]).map((l,idx)=>`
-            <div class="log-item">
-                <button class="log-edit-btn" onclick="editLog(${idx})">✏️</button>
-                <span style="font-size:11px; color:#888;">${l.date} | ${l.type}</span>
-                <div style="white-space:pre-wrap;">${l.note}</div>
+            <div class="log-item"><button class="log-edit-btn" onclick="editLog(${idx})">✏️</button>
+                <span style="font-size:11px; color:#888;">${l.date} | ${l.type}</span><div style="white-space:pre-wrap;">${l.note}</div>
             </div>`).reverse().join('');
     }
 
@@ -327,11 +293,10 @@
         document.getElementById('editing-log-index').value = "-1";
         document.getElementById('log-text').value = "";
         document.getElementById('log-date').valueAsDate = new Date();
-        document.getElementById('log-input-label').innerText = "新增聯絡紀錄";
+        document.getElementById('log-input-label').innerText = "聯絡紀錄";
         document.getElementById('cancel-edit-log-btn').style.display = "none";
     }
 
-    // --- 其他 UI 控制 ---
     function setPriority(p){ tempPriority=p; document.getElementById('p-Urgent').className=p==='Urgent'?'opt-btn active':'opt-btn'; document.getElementById('p-Normal').className=p==='Normal'?'opt-btn active':'opt-btn'; }
     function setCaseStatus(s){ tempStatus=s; document.getElementById('st-Active').className=s==='Active'?'opt-btn active':'opt-btn'; document.getElementById('st-Closed').className=s==='Closed'?'opt-btn active':'opt-btn'; }
     function setCaseType(t){ tempType=t; document.getElementById('t-Counselling').className=t==='Counselling'?'opt-btn active':'opt-btn'; document.getElementById('t-Hidden').className=t==='Hidden'?'opt-btn active':'opt-btn'; }
@@ -341,9 +306,7 @@
     function closeModal(){ document.getElementById('case-modal').style.display='none'; }
     function togglePin(e,id){ e.stopPropagation(); const i=cases.findIndex(x=>x.id===id); cases[i].isPinned=!cases[i].isPinned; saveToLocal(); renderCases(); }
     function setFilter(f,b){ currentFilter=f; document.querySelectorAll('.filter-tag').forEach(x=>x.classList.remove('active')); b.classList.add('active'); renderCases(); }
-    function showConfirm(a){ if(confirm("確定執行？")){ const i=cases.findIndex(x=>x.id===document.getElementById('internal-id').value); if(a==='close') cases[i].status='Closed'; saveToLocal(); renderCases(); closeModal(); }}
-    function exportToExcel(){ /* 保持原 Excel 邏輯 */ }
-    function importFromExcel(e){ /* 保持原 Excel 匯入邏輯 */ }
+    function showConfirm(a){ if(confirm("確定？")){ const i=cases.findIndex(x=>x.id===document.getElementById('internal-id').value); if(a==='close') cases[i].status='Closed'; else if(a==='delete') cases.splice(i,1); saveToLocal(); renderCases(); closeModal(); }}
 </script>
 </body>
 </html>
